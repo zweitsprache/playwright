@@ -15,8 +15,10 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@vercel/blob": "^2.4.0",
     "html-to-image": "^1.11.13",
     "jszip": "^3.10.1",
+    "nanoid": "^5.1.11",
     "next": "16.2.6",
     "pg": "^8.21.0",
     "react": "19.2.4",

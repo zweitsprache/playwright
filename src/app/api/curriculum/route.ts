@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -74,7 +75,7 @@ function badRequest(message: string) {
 }
 
 async function setProjectOrder(projectIds: string[]) {
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     for (const [position, id] of projectIds.entries()) {
       await tx.project.update({
         where: { id },
@@ -85,7 +86,7 @@ async function setProjectOrder(projectIds: string[]) {
 }
 
 async function setModuleOrder(projectId: string, moduleIds: string[]) {
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     for (const [position, id] of moduleIds.entries()) {
       await tx.module.update({
         where: { id },
@@ -96,7 +97,7 @@ async function setModuleOrder(projectId: string, moduleIds: string[]) {
 }
 
 async function setLessonOrder(moduleId: string, lessonIds: string[]) {
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     for (const [position, id] of lessonIds.entries()) {
       await tx.lesson.update({
         where: { id },

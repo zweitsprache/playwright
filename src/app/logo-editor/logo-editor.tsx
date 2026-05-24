@@ -278,6 +278,7 @@ export default function LogoEditor() {
                   logo={logo}
                   tag={secondary.tag}
                   title={secondary.title}
+                  subtitle={secondary.subtitle}
                   course={secondary.course}
                 />
               </PreviewFrame>
@@ -436,7 +437,7 @@ const SlideSecondary = (
 };
 
 const SlideTertiary = (
-  { logo, tag, title, course }: Omit<SecondaryProps, "subtitle">,
+  { logo, tag, title, course }: SecondaryProps,
   ref: ForwardedRef<HTMLDivElement>,
 ) => {
   return (
