@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>B Intro Slide Source</title>
+    <link rel="stylesheet" href="./B-intro-slide-source.css" />
+  </head>
+  <body>
+    <script id="slide-data" type="application/json">
+      {
+        "tagPrimary": "ONLINEKURS",
+        "tagSecondary": "01",
+        "title": "Informationen bereitstellen",
+        "course": "Padlet für den\nDaZ-Kurs",
+        "courseSubtitlePrimary": "Vorlagen, Workflows asdfsadf asdf asd fasd",
+        "subtitle": "Vorlagen, Workflows asdfsadf asdf asd fasd",
+        "logo": "./didaktiv_logo_brand.svg"
+      }
+    </script>
+
+    <div class="slide-stack">
+      <main class="slide slide--primary" aria-label="Intro slide preview">
+        <section class="slide__left">
+          <div class="slide__header">
+            <img class="slide__brand" data-field="logo" alt="didaktiv" />
+
+            <span class="slide__eyebrow" data-field="tagPrimary"></span>
+
+            <div class="slide__copy slide__copy--url">
+                <p class="slide__subtitle slide__subtitle--url">didaktiv.com</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide__right" aria-hidden="true">
+          <div class="slide__mockup">
+            <div class="slide__mockup-bar">
+              <span class="slide__dot"></span>
+              <span class="slide__dot"></span>
+              <span class="slide__dot"></span>
+            </div>
+
+            <div class="slide__mockup-body">
+              <div class="slide__rail">
+                <span class="slide__rail-chip slide__rail-chip--active" style="width: 126px"></span>
+                <span class="slide__rail-chip" style="width: 152px"></span>
+                <span class="slide__rail-chip" style="width: 107px"></span>
+                <span class="slide__rail-chip" style="width: 140px"></span>
+                <span class="slide__rail-chip" style="width: 90px"></span>
+              </div>
+
+              <div class="slide__surface">
+                <span class="slide__surface-line slide__surface-line--short"></span>
+                <div class="slide__surface-title" data-field="course"></div>
+                <div class="slide__surface-subtitle" data-field="courseSubtitlePrimary"></div>
+                <span class="slide__surface-line slide__surface-line--mid"></span>
+                <span class="slide__surface-cta"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <main class="slide" aria-label="Intro slide variation preview">
+        <section class="slide__left">
+          <div class="slide__header">
+            <img class="slide__brand" data-field="logo" alt="didaktiv" />
+
+            <span class="slide__eyebrow slide__eyebrow--rect" data-field="tagSecondary"></span>
+
+            <div class="slide__copy">
+              <h1 class="slide__title" data-field="title"></h1>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide__right" aria-hidden="true">
+          <div class="slide__mockup">
+            <div class="slide__mockup-bar">
+              <span class="slide__dot"></span>
+              <span class="slide__dot"></span>
+              <span class="slide__dot"></span>
+            </div>
+
+            <div class="slide__mockup-body">
+              <div class="slide__rail">
+                <span class="slide__rail-chip slide__rail-chip--active" style="width: 126px"></span>
+                <span class="slide__rail-chip" style="width: 152px"></span>
+                <span class="slide__rail-chip" style="width: 107px"></span>
+                <span class="slide__rail-chip" style="width: 140px"></span>
+                <span class="slide__rail-chip" style="width: 90px"></span>
+              </div>
+
+              <div class="slide__surface">
+                <span class="slide__surface-line slide__surface-line--short"></span>
+                <div class="slide__surface-title" data-field="course"></div>
+                <span class="slide__surface-line slide__surface-line--mid"></span>
+                <span class="slide__surface-cta"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <main class="slide slide--tertiary" aria-label="Intro slide tertiary preview">
+        <section class="slide__left">
+          <div class="slide__header">
+            <img class="slide__brand" data-field="logo" alt="didaktiv" />
+
+            <span class="slide__eyebrow slide__eyebrow--rect" data-field="tagSecondary"></span>
+
+            <div class="slide__copy">
+              <h1 class="slide__title" data-field="title"></h1>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide__right" aria-hidden="true">
+          <div class="slide__mockup">
+            <div class="slide__mockup-bar">
+              <span class="slide__dot"></span>
+              <span class="slide__dot"></span>
+              <span class="slide__dot"></span>
+            </div>
+
+            <div class="slide__mockup-body">
+              <div class="slide__rail">
+                <span class="slide__rail-chip slide__rail-chip--active" style="width: 126px"></span>
+                <span class="slide__rail-chip" style="width: 152px"></span>
+                <span class="slide__rail-chip" style="width: 107px"></span>
+                <span class="slide__rail-chip" style="width: 140px"></span>
+                <span class="slide__rail-chip" style="width: 90px"></span>
+              </div>
+
+              <div class="slide__surface">
+                <span class="slide__surface-line slide__surface-line--short"></span>
+                <div class="slide__surface-title" data-field="course"></div>
+                <span class="slide__surface-line slide__surface-line--mid"></span>
+                <span class="slide__surface-cta"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const slideData = JSON.parse(document.getElementById('slide-data').textContent);
+
+      for (const [key, value] of Object.entries(slideData)) {
+        document.querySelectorAll(`[data-field="${key}"]`).forEach((node) => {
+          if (node.tagName === 'IMG') {
+            node.src = value;
+            return;
+          }
+
+          node.textContent = value;
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,497 @@
+.page {
+  min-height: 100%;
+  background: #f4f4f4;
+  padding: 24px;
+}
+
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1f2937;
+}
+
+.header p {
+  margin: 6px 0 0;
+  color: #4b5563;
+}
+
+.message {
+  margin: 0;
+  color: #1f2937;
+}
+
+.tree {
+  display: grid;
+  gap: 10px;
+}
+
+.projectCard,
+.moduleCard,
+.lessonRow {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.projectCard {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.moduleCard {
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  background: #f9fafb;
+}
+
+.lessonRow {
+  padding: 8px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.rowHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rowLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.dragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  color: #6b7280;
+  cursor: grab;
+  background: #fff;
+  user-select: none;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fields label,
+.lessonRow label {
+  display: grid;
+  gap: 4px;
+}
+
+.fields span,
+.lessonRow span {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.fields input,
+.lessonRow input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px;
+  font: inherit;
+  background: #fff;
+}
+
+.fields input:focus,
+.lessonRow input:focus {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+}
+
+.childActions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.moduleList,
+.lessonList {
+  display: grid;
+  gap: 8px;
+}
+
+.button,
+.buttonSmall,
+.buttonGhost {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.button {
+  background: #1f2937;
+  color: #ffffff;
+  border-color: #1f2937;
+}
+
+.buttonSmall {
+  background: #ffffff;
+  color: #111827;
+}
+
+.buttonGhost {
+  margin-left: auto;
+  background: #ffffff;
+  color: #374151;
+}
+
+.button:disabled,
+.buttonSmall:disabled,
+.buttonGhost:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dropZone {
+  height: 8px;
+  border-radius: 999px;
+  border: 1px dashed transparent;
+}
+
+.dropZoneActive {
+  border-color: #2563eb;
+  background: #dbeafe;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.exportHost {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.exportCapture {
+  width: 1920px;
+  height: 1080px;
+}
+
+.logoSlide {
+  --bg-page: #f8f6f1;
+  --bg-panel: #efece4;
+  --fg-strong: #2b2b43;
+  --fg-body: #5e5950;
+  --surface-skeleton: rgba(248, 246, 241, 0.36);
+  --accent: #c8553d;
+  --shadow: 0 14px 36px rgba(43, 43, 67, 0.12), 0 6px 14px rgba(43, 43, 67, 0.08);
+  position: relative;
+  display: grid;
+  grid-template-columns: 800px 1120px;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: var(--bg-page);
+  color: var(--fg-strong);
+  font-family: "Encode Sans Semi Condensed", "Encode Sans", system-ui, sans-serif;
+}
+
+.logoSlideLeft {
+  position: relative;
+  padding: 96px 80px 0 120px;
+}
+
+.logoSlideHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 48px;
+}
+
+.logoSlideBrand {
+  display: block;
+  width: 279px;
+  height: 64px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.logoSlideEyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 49px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.logoSlideEyebrowWide {
+  min-width: 72px;
+}
+
+.logoSlideCopy {
+  position: absolute;
+  left: 120px;
+  bottom: 120px;
+  width: 600px;
+}
+
+.logoSlideTitle {
+  margin: 0;
+  color: var(--fg-strong);
+  font-size: 96px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  white-space: pre-line;
+}
+
+.logoSlideSubtitle {
+  margin: 24px 0 0;
+  width: 600px;
+  color: var(--fg-body);
+  font-size: 56px;
+  line-height: 1.25;
+  font-weight: 300;
+  white-space: pre-line;
+}
+
+.logoSlideRight {
+  position: relative;
+  background: var(--bg-panel);
+}
+
+.logoSlideMockup {
+  position: absolute;
+  top: 96px;
+  right: 120px;
+  bottom: 96px;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0 6px 6px 0;
+  background: var(--fg-strong);
+  box-shadow: var(--shadow);
+}
+
+.logoSlideMockupPrimary {
+  left: -300px;
+  border-radius: 6px;
+}
+
+.logoSlideMockupTertiary {
+  width: calc(100% - 120px);
+  height: 50%;
+  left: 0;
+  right: auto;
+  bottom: auto;
+}
+
+.logoSlideTertiary .logoSlideCopy {
+  width: 1200px;
+  z-index: 2;
+}
+
+.logoSlideTertiary .logoSlideLeft {
+  z-index: 2;
+}
+
+.logoSlideTertiary .logoSlideRight {
+  z-index: 1;
+}
+
+.logoSlideTertiary .logoSlideSurfaceTitle {
+  font-size: 46px;
+  line-height: 1.05;
+}
+
+.logoSlidePrimary .logoSlideSurface {
+  padding-left: 120px;
+}
+
+.logoSlideMockupBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  flex-shrink: 0;
+  padding: 0 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.logoSlideDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.logoSlideMockupBody {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  flex: 1;
+}
+
+.logoSlideRail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 32px 20px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.logoSlideRailChip {
+  height: 14px;
+  border-radius: 3px;
+  background: rgba(248, 246, 241, 0.16);
+}
+
+.logoSlideRailChipActive {
+  background: var(--accent);
+}
+
+.logoSlideSurface {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 36px 40px;
+}
+
+.logoSlideSurfaceLine {
+  height: 32px;
+  border-radius: 3px;
+  background: var(--surface-skeleton);
+}
+
+.logoSlideTertiary .logoSlideSurfaceLine {
+  height: 18px;
+}
+
+.logoSlide:not(.logoSlidePrimary):not(.logoSlideTertiary) .logoSlideSurfaceLine {
+  height: 20px;
+}
+
+.logoSlideTertiary .logoSlideRailChip {
+  height: 8px;
+}
+
+.logoSlideSurfaceLineShort {
+  width: 52%;
+}
+
+.logoSlideSurfaceLineMid {
+  width: 74%;
+}
+
+.logoSlide:not(.logoSlidePrimary) .logoSlideSurfaceLineShort {
+  width: 400px;
+}
+
+.logoSlide:not(.logoSlidePrimary) .logoSlideSurfaceLineMid {
+  width: 569px;
+}
+
+.logoSlideSurfaceCta {
+  width: 140px;
+  height: 22px;
+  margin-top: 12px;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+.logoSlide:not(.logoSlidePrimary) .logoSlideSurfaceCta {
+  width: 108px;
+}
+
+.logoSlidePrimary .logoSlideSurfaceCta {
+  height: 28px;
+}
+
+.logoSlide:not(.logoSlidePrimary):not(.logoSlideTertiary) .logoSlideSurfaceCta {
+  height: 18px;
+}
+
+.logoSlideTertiary .logoSlideSurfaceCta {
+  height: 16px;
+}
+
+.logoSlideSurfaceTitle {
+  color: var(--surface-skeleton);
+  font-size: 80px;
+  line-height: 1.1;
+  margin-block: 12px;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  white-space: pre-line;
+}
+
+.logoSlideSurfaceTitlePrimary {
+  color: #fff;
+  font-size: 116px;
+  margin-block: 18px;
+}
+
+.logoSlideSurfaceSubtitle {
+  white-space: pre-line;
+}
+
+.logoSlideSurfaceSubtitlePrimary {
+  max-width: 760px;
+  margin-bottom: 18px;
+  color: #fff;
+  font-size: 56px;
+  line-height: 1.2;
+  font-weight: 300;
+}
+
+@media (max-width: 900px) {
+  .fields {
+    grid-template-columns: 1fr;
+  }
+
+  .lessonRow {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .buttonGhost {
+    margin-left: 0;
+  }
+}
