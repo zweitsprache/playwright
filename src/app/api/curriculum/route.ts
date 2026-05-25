@@ -352,7 +352,7 @@ export async function PUT(request: Request) {
         })
       ).map((item: { id: string }) => item.id);
 
-      const filteredIds = moduleIds.filter((id) => id !== body.id);
+      const filteredIds = moduleIds.filter((id: string) => id !== body.id);
       const targetIndex = clampIndex(body.toIndex, filteredIds.length);
       filteredIds.splice(targetIndex, 0, body.id);
 
@@ -391,7 +391,7 @@ export async function PUT(request: Request) {
         })
       ).map((item: { id: string }) => item.id);
 
-      const filteredIds = lessonIds.filter((id) => id !== body.id);
+      const filteredIds = lessonIds.filter((id: string) => id !== body.id);
       const targetIndex = clampIndex(body.toIndex, filteredIds.length);
       filteredIds.splice(targetIndex, 0, body.id);
 
