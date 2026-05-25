@@ -44,3 +44,45 @@ model Lesson {
 
   @@index([moduleId, position])
 }
+
+/// Stores video editor projects for the vendored React Video Editor Pro app.
+/// `userId` is currently the browser-generated `videoEditorUserId` (localStorage).
+/// `state` holds the full serialised editor state (overlays, playbackRate, ...).
+model VideoProject {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String   @default("Untitled project")
+  aspectRatio     String?
+  backgroundColor String?
+  state           Json
+  renderJobs      RenderJob[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+  @@map("video_projects")
+}
+
+model RenderJob {
+  id           String   @id @default(cuid())
+  userId       String
+  projectId    String
+  provider     String
+  compositionId String
+  status       String   @default("queued")
+  progress     Float    @default(0)
+  inputProps   Json
+  renderId     String?
+  bucketName   String?
+  outputUrl    String?
+  outputSize   Int?
+  errorMessage String?
+  project      VideoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([status, createdAt])
+  @@map("render_jobs")
+}

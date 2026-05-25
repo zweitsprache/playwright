@@ -14,7 +14,7 @@ import {
 } from "./padlet-shared.mjs";
 
 const TARGET_URL =
-  "https://padlet.com/didaktiv/a1-0103-ba-f26-01-kvs4ve8fl63vt5ks";
+  "https://padlet.com/didaktiv/a1-0103-ba-f26-01-98z908pe607vqzit";
 const SECTION_NAME = "Termine";
 const SUBJECT = "Kursstart";
 const BODY = "MO 17.08.2026, 14.00 Uhr";

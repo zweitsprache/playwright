@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "app/*": ["./vendor/react-video-editor-pro/app/*"],
+      "components/*": ["./vendor/react-video-editor-pro/app/reactvideoeditor/pro/components/*"]
     }
   },
   "include": [

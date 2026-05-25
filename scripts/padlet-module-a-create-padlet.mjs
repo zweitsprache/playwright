@@ -17,9 +17,9 @@ const options = getPadletLaunchOptions();
 
 const session = await launchPadletContext(options);
 const { context } = session;
-const page = await getPrimaryPage(context);
+const page = await getPrimaryPage(session);
 
-const recorder = options.recordVideo
+const recorder = options.recordVideo && session.attached
   ? await startCdpScreencast(page, { name: "padlet-module-a-create-padlet" })
   : null;
 

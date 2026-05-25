@@ -2,10 +2,12 @@ import path from "node:path";
 import fs from "node:fs";
 
 import {
+  clearViewportFocus,
   clickWithFocus,
   clearAndType,
   closePadletContext,
   ensurePadletSession,
+  focusViewportRegion,
   getPadletLaunchOptions,
   getPrimaryPage,
   launchPadletContext,
@@ -13,7 +15,7 @@ import {
 } from "./padlet-shared.mjs";
 
 const TARGET_URL =
-  "https://padlet.com/didaktiv/a1-0103-ba-f26-01-kvs4ve8fl63vt5ks";
+  "https://padlet.com/didaktiv/a1-0103-ba-f26-01-98z908pe607vqzit";
 
 const UPLOAD_DIR = path.join(process.cwd(), "artifacts", "uploads");
 
@@ -62,6 +64,7 @@ async function createPost(post, isFirst) {
     .locator('[data-testid="TermineSectionAddPostButton"]')
     .first();
   await addPostButton.waitFor({ state: "visible", timeout: 20000 });
+  await focusViewportRegion(addPostButton, { scale: 1.16 });
   await clickWithFocus(addPostButton);
 
   const subjectInput = page
@@ -78,15 +81,18 @@ async function createPost(post, isFirst) {
   }
 
   // Subject.
+  await focusViewportRegion(subjectInput, { scale: 1.12 });
   await clearAndType(subjectInput, post.subject);
 
   // Body.
   const bodyEditor = page
     .locator('[data-testid="surfacePostRichEditor"] [contenteditable="true"]')
     .first();
+  await focusViewportRegion(bodyEditor, { scale: 1.1 });
   await clickWithFocus(bodyEditor);
   await page.keyboard.type(post.body, { delay: 180 });
   await page.waitForTimeout(1000);
+  await clearViewportFocus(page);
 
   // Attach image inline via the hidden file input.
   const fileInput = page
@@ -119,6 +125,7 @@ async function createPost(post, isFirst) {
     .locator('[data-testid="publishPostButton"]')
     .first();
   await publishButton.waitFor({ state: "visible", timeout: 20000 });
+  await focusViewportRegion(publishButton, { scale: 1.18 });
   await clickWithFocus(publishButton);
   await publishButton
     .waitFor({ state: "hidden", timeout: 30000 })
@@ -145,14 +152,17 @@ async function createPost(post, isFirst) {
       .locator('[data-testid="surfacePostMoreActionsButton"]')
       .first();
     await moreActions.waitFor({ state: "visible", timeout: 20000 });
+    await focusViewportRegion(moreActions, { scale: 1.18 });
     // Programmatic click avoids hover tooltip which shifts the column layout.
     await moreActions.evaluate((el) => el.click());
     await page.waitForTimeout(1500);
+    await clearViewportFocus(page);
 
     const colorSwatch = page
       .locator(`[data-selector-color="${post.color}"]`)
       .first();
     await colorSwatch.waitFor({ state: "visible", timeout: 20000 });
+    await focusViewportRegion(colorSwatch, { scale: 1.22 });
     await clickWithFocus(colorSwatch);
     await page.waitForTimeout(2000);
   }
