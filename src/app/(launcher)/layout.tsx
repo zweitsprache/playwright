@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { LogoutButton } from "@/components/auth/logout-button";
+
 import "../globals.css";
 
 const geistSans = Geist({
@@ -26,7 +28,10 @@ export default function LauncherLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        <LogoutButton />
+        {children}
+      </body>
     </html>
   );
 }

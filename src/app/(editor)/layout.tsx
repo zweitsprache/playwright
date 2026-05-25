@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { LogoutButton } from "@/components/auth/logout-button";
+
 import "../../../vendor/react-video-editor-pro/app/globals.css";
 
 import { PostHogProvider } from "../../../vendor/react-video-editor-pro/app/reactvideoeditor/pro/components/providers/posthog-provider";
@@ -20,6 +22,7 @@ export default function EditorLayout({
       <body suppressHydrationWarning>
         <PostHogProvider>
           <main>
+            <LogoutButton />
             {children}
             <Toaster />
           </main>

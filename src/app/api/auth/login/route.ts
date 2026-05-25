@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 import {
   SESSION_COOKIE_NAME,
-  getAdminSessionToken,
+  SESSION_TTL_SECONDS,
+  createAdminSessionCookieValue,
   hasAdminCredentials,
   sanitizeNextPath,
   validateAdminCredentials,
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.redirect(loginUrl, 303);
   }
 
-  const sessionToken = await getAdminSessionToken();
+  const sessionToken = await createAdminSessionCookieValue();
 
   if (!sessionToken) {
     return NextResponse.redirect(new URL("/login?error=config", request.url), 303);
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: SESSION_TTL_SECONDS,
   });
 
   return response;

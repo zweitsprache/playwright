@@ -1,5 +1,5 @@
 const SESSION_COOKIE_NAME = "playwright-admin-session";
-const SESSION_TOKEN_PREFIX = "playwright-admin:v1";
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 
 function getAdminCredentials() {
   const email = process.env.ADMIN_USER_EMAIL?.trim();
@@ -17,11 +17,34 @@ function bytesToHex(buffer: ArrayBuffer) {
   ).join("");
 }
 
-async function sha256Hex(value: string) {
-  const encoded = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", encoded);
+async function signSessionPayload(payload: string) {
+  const configured = getAdminCredentials();
 
-  return bytesToHex(digest);
+  if (!configured.email || !configured.password) {
+    return null;
+  }
+
+  const secret = process.env.ADMIN_SESSION_SECRET?.trim().length
+    ? process.env.ADMIN_SESSION_SECRET.trim()
+    : `${configured.email}:${configured.password}`;
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    {
+      name: "HMAC",
+      hash: "SHA-256",
+    },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(payload),
+  );
+
+  return bytesToHex(signature);
 }
 
 export function hasAdminCredentials() {
@@ -36,16 +59,15 @@ export async function validateAdminCredentials(email: string, password: string) 
   return configured.email === email.trim() && configured.password === password;
 }
 
-export async function getAdminSessionToken() {
-  const configured = getAdminCredentials();
+export async function createAdminSessionCookieValue() {
+  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
+  const signature = await signSessionPayload(String(expiresAt));
 
-  if (!configured.email || !configured.password) {
+  if (!signature) {
     return null;
   }
 
-  return sha256Hex(
-    `${SESSION_TOKEN_PREFIX}:${configured.email}:${configured.password}`,
-  );
+  return `${expiresAt}.${signature}`;
 }
 
 export async function isAuthenticatedSession(sessionValue: string | undefined) {
@@ -53,9 +75,20 @@ export async function isAuthenticatedSession(sessionValue: string | undefined) {
     return false;
   }
 
-  const expected = await getAdminSessionToken();
+  const [expiresAtValue, providedSignature] = sessionValue.split(".");
+  const expiresAt = Number.parseInt(expiresAtValue, 10);
 
-  return Boolean(expected && sessionValue === expected);
+  if (!Number.isFinite(expiresAt) || !providedSignature) {
+    return false;
+  }
+
+  if (expiresAt <= Math.floor(Date.now() / 1000)) {
+    return false;
+  }
+
+  const expectedSignature = await signSessionPayload(expiresAtValue);
+
+  return Boolean(expectedSignature && expectedSignature === providedSignature);
 }
 
 export function sanitizeNextPath(rawValue: string | null | undefined) {
@@ -74,4 +107,4 @@ export function sanitizeNextPath(rawValue: string | null | undefined) {
   return rawValue;
 }
 
-export { SESSION_COOKIE_NAME };
+export { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS };
