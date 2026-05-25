@@ -1,0 +1,32 @@
+version: 2
+
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+
+    # reduce noise
+    open-pull-requests-limit: 3
+
+    # group updates
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+
+    # keep Remotion majors manual (VERY smart for RVE)
+    ignore:
+      - dependency-name: "@remotion/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "remotion"
+        update-types: ["version-update:semver-major"]

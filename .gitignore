@@ -36,6 +36,9 @@ yarn-error.log*
 /tmp
 /public/rendered-videos
 /public/users
+/vendor/react-video-editor-pro/.git
+/vendor/react-video-editor-pro/.next
+/vendor/react-video-editor-pro/node_modules
 
 # env files (can opt-in for committing if needed)
 .env*
