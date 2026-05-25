@@ -244,7 +244,7 @@ export async function DELETE(request: Request) {
           orderBy: [{ position: "asc" }, { createdAt: "asc" }],
           select: { id: true },
         })
-      ).map((item) => item.id);
+      ).map((item: { id: string }) => item.id);
 
       await setProjectOrder(projectIds);
     } else if (body.type === "module") {
@@ -265,7 +265,7 @@ export async function DELETE(request: Request) {
           orderBy: [{ position: "asc" }, { createdAt: "asc" }],
           select: { id: true },
         })
-      ).map((item) => item.id);
+      ).map((item: { id: string }) => item.id);
 
       await setModuleOrder(record.projectId, moduleIds);
     } else if (body.type === "lesson") {
@@ -286,7 +286,7 @@ export async function DELETE(request: Request) {
           orderBy: [{ position: "asc" }, { createdAt: "asc" }],
           select: { id: true },
         })
-      ).map((item) => item.id);
+      ).map((item: { id: string }) => item.id);
 
       await setLessonOrder(record.moduleId, lessonIds);
     } else {
@@ -317,7 +317,7 @@ export async function PUT(request: Request) {
           orderBy: [{ position: "asc" }, { createdAt: "asc" }],
           select: { id: true },
         })
-      ).map((item) => item.id);
+      ).map((item: { id: string }) => item.id);
 
       const sourceIndex = projectIds.indexOf(body.id);
 
@@ -350,7 +350,7 @@ export async function PUT(request: Request) {
           orderBy: [{ position: "asc" }, { createdAt: "asc" }],
           select: { id: true },
         })
-      ).map((item) => item.id);
+      ).map((item: { id: string }) => item.id);
 
       const filteredIds = moduleIds.filter((id) => id !== body.id);
       const targetIndex = clampIndex(body.toIndex, filteredIds.length);
@@ -365,7 +365,7 @@ export async function PUT(request: Request) {
             orderBy: [{ position: "asc" }, { createdAt: "asc" }],
             select: { id: true },
           })
-        ).map((item) => item.id);
+        ).map((item: { id: string }) => item.id);
 
         await setModuleOrder(sourceModule.projectId, sourceIds);
       }
@@ -389,7 +389,7 @@ export async function PUT(request: Request) {
           orderBy: [{ position: "asc" }, { createdAt: "asc" }],
           select: { id: true },
         })
-      ).map((item) => item.id);
+      ).map((item: { id: string }) => item.id);
 
       const filteredIds = lessonIds.filter((id) => id !== body.id);
       const targetIndex = clampIndex(body.toIndex, filteredIds.length);
@@ -404,7 +404,7 @@ export async function PUT(request: Request) {
             orderBy: [{ position: "asc" }, { createdAt: "asc" }],
             select: { id: true },
           })
-        ).map((item) => item.id);
+        ).map((item: { id: string }) => item.id);
 
         await setLessonOrder(sourceLesson.moduleId, sourceIds);
       }
