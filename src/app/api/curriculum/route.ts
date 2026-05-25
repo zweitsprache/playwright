@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
+type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
 type NodeType = "project" | "module" | "lesson";
 
 type MoveBody = {
@@ -74,7 +76,7 @@ function badRequest(message: string) {
 }
 
 async function setProjectOrder(projectIds: string[]) {
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     for (const [position, id] of projectIds.entries()) {
       await tx.project.update({
         where: { id },
@@ -85,7 +87,7 @@ async function setProjectOrder(projectIds: string[]) {
 }
 
 async function setModuleOrder(projectId: string, moduleIds: string[]) {
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     for (const [position, id] of moduleIds.entries()) {
       await tx.module.update({
         where: { id },
@@ -96,7 +98,7 @@ async function setModuleOrder(projectId: string, moduleIds: string[]) {
 }
 
 async function setLessonOrder(moduleId: string, lessonIds: string[]) {
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     for (const [position, id] of lessonIds.entries()) {
       await tx.lesson.update({
         where: { id },
