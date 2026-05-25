@@ -33,6 +33,9 @@ yarn-error.log*
 
 # local automation output
 /artifacts
+/tmp
+/public/rendered-videos
+/public/users
 
 # env files (can opt-in for committing if needed)
 .env*
