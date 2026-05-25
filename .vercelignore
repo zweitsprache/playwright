@@ -1,0 +1,9 @@
+.git
+.next
+node_modules
+artifacts
+tmp
+public/rendered-videos
+public/users
+vendor/react-video-editor-pro/.next
+vendor/react-video-editor-pro/node_modules
