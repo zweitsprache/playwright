@@ -86,10 +86,12 @@ const RenderControls: React.FC<RenderControlsProps> = ({
     }
   }, [state.status, state.url, state.error]);
 
+  const isLocalSsrRenderUrl = (url: string) => url.startsWith("/rendered-videos/");
+
   const handleDownload = (url: string) => {
     let downloadUrl = url;
 
-    if (renderType === "ssr") {
+    if (renderType === "ssr" && isLocalSsrRenderUrl(url)) {
       // Convert the video URL to a download URL for SSR
       downloadUrl = url
         .replace("/rendered-videos/", "/api/latest/ssr/download/")

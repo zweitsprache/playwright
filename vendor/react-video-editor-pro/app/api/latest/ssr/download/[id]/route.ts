@@ -20,6 +20,7 @@ export async function GET(
     
     // Construct the file path first
     const filePath = path.join(process.cwd(), 'public', 'rendered-videos', `${id}.mp4`);
+    const isAbsoluteOutputUrl = typeof renderState?.url === 'string' && /^https?:\/\//.test(renderState.url);
     
     if (!renderState) {
       // Fallback: if render state is missing but file exists, allow download
@@ -38,6 +39,10 @@ export async function GET(
           { error: `Render ${id} is not completed yet. Status: ${renderState.status}` },
           { status: 400 }
         );
+      }
+
+      if (isAbsoluteOutputUrl) {
+        return NextResponse.redirect(renderState.url);
       }
       
       // Check if the file exists

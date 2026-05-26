@@ -4,6 +4,7 @@ import {
   selectComposition,
   RenderMediaOnProgress,
 } from "@remotion/renderer";
+import { put } from "@vercel/blob";
 import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
@@ -28,6 +29,17 @@ export const renderStatus = new Map<string, "rendering" | "done" | "error">();
 export const renderErrors = new Map<string, string>();
 export const renderUrls = new Map<string, string>();
 export const renderSizes = new Map<string, number>();
+
+const uploadRenderedVideo = async (renderId: string, localOutputPath: string) => {
+  const fileBuffer = await fs.promises.readFile(localOutputPath);
+  const blob = await put(`rendered-videos/${renderId}.mp4`, fileBuffer, {
+    access: "public",
+    addRandomSuffix: false,
+    contentType: "video/mp4",
+  });
+
+  return blob.url;
+};
 
 /**
  * Custom renderer that uses browser-based rendering to avoid platform-specific dependencies
@@ -115,6 +127,8 @@ export async function startRendering(
       console.log(`Using actual duration: ${actualDurationInFrames} frames`);
       console.log(`Using actual dimensions: ${actualWidth}x${actualHeight}`);
 
+      const localOutputPath = path.join(VIDEOS_DIR, `${renderId}.mp4`);
+
       // Render the video using chromium
       await renderMedia({
         codec: "h264",
@@ -127,7 +141,7 @@ export async function startRendering(
           height: actualHeight,
         },
         serveUrl: bundleLocation,
-        outputLocation: path.join(VIDEOS_DIR, `${renderId}.mp4`),
+        outputLocation: localOutputPath,
         inputProps: {
           ...inputProps,
           baseUrl,
@@ -151,9 +165,13 @@ export async function startRendering(
         jpegQuality: 100, // Maximum JPEG quality for any JPEG operations
       });
 
-      // Get file size
-      const stats = fs.statSync(path.join(VIDEOS_DIR, `${renderId}.mp4`));
-      const outputPath = `/rendered-videos/${renderId}.mp4`;
+      const stats = fs.statSync(localOutputPath);
+      let outputPath = `/rendered-videos/${renderId}.mp4`;
+
+      if (process.env.BLOB_READ_WRITE_TOKEN) {
+        outputPath = await uploadRenderedVideo(renderId, localOutputPath);
+      }
+
       completeRender(renderId, outputPath, stats.size);
       console.log(`Render ${renderId} completed successfully`);
     } catch (error: any) {
