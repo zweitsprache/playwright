@@ -3,6 +3,7 @@ import { after, NextResponse } from "next/server";
 import { AwsRegion, renderMediaOnLambda } from "@remotion/lambda/client";
 import { prisma } from "../../../lib/prisma";
 import { startRendering } from "../latest/ssr/lib/remotion-renderer";
+import { getAuthenticatedAdminUserId, hasAdminCredentials } from "../../../../../src/lib/auth";
 import { collectFontInfoFromOverlays } from "../../reactvideoeditor/pro/utils/text/collect-font-info-from-items";
 import {
   LAMBDA_FUNCTION_NAME,
@@ -23,6 +24,35 @@ const USER_HEADER = "x-user-id";
 function getUserId(req: Request): string | null {
   const id = req.headers.get(USER_HEADER);
   return id && id.trim().length > 0 ? id.trim() : null;
+}
+
+async function resolveRenderScope(request: Request) {
+  const adminUserId = await getAuthenticatedAdminUserId(request);
+
+  if (adminUserId) {
+    return {
+      canAccessAllProjects: true,
+      writeUserId: adminUserId,
+    };
+  }
+
+  if (!hasAdminCredentials()) {
+    return {
+      canAccessAllProjects: true,
+      writeUserId: getUserId(request) ?? "local-editor",
+    };
+  }
+
+  const requestUserId = getUserId(request);
+
+  if (!requestUserId) {
+    return null;
+  }
+
+  return {
+    canAccessAllProjects: false,
+    writeUserId: requestUserId,
+  };
 }
 
 const selectRenderJob = {
@@ -56,7 +86,7 @@ type RenderJobDelegate = {
     select: typeof selectRenderJob;
   }) => Promise<unknown>;
   findMany: (args: {
-    where: { userId: string; projectId?: string };
+    where: { userId?: string; projectId?: string };
     orderBy: { createdAt: "desc" };
     take: number;
     select: typeof selectRenderJob;
@@ -72,9 +102,12 @@ function getRenderJobDelegate(): RenderJobDelegate {
   return (prisma as unknown as { renderJob: RenderJobDelegate }).renderJob;
 }
 
-async function ensureOwnedProject(userId: string, projectId: string) {
+async function ensureOwnedProject(
+  projectId: string,
+  scope: { canAccessAllProjects: boolean; writeUserId: string },
+) {
   return prisma.videoProject.findFirst({
-    where: { id: projectId, userId },
+    where: scope.canAccessAllProjects ? { id: projectId } : { id: projectId, userId: scope.writeUserId },
     select: { id: true },
   });
 }
@@ -192,8 +225,8 @@ async function startProviderRender(
 }
 
 export async function GET(request: Request) {
-  const userId = getUserId(request);
-  if (!userId) {
+  const scope = await resolveRenderScope(request);
+  if (!scope) {
     return NextResponse.json({ error: "Missing user id" }, { status: 401 });
   }
 
@@ -201,7 +234,7 @@ export async function GET(request: Request) {
   const projectId = searchParams.get("projectId")?.trim();
 
   if (projectId) {
-    const ownedProject = await ensureOwnedProject(userId, projectId);
+    const ownedProject = await ensureOwnedProject(projectId, scope);
     if (!ownedProject) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
@@ -209,7 +242,7 @@ export async function GET(request: Request) {
 
   const jobs = await getRenderJobDelegate().findMany({
     where: {
-      userId,
+      ...(scope.canAccessAllProjects ? {} : { userId: scope.writeUserId }),
       ...(projectId ? { projectId } : {}),
     },
     orderBy: { createdAt: "desc" },
@@ -221,8 +254,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const userId = getUserId(request);
-  if (!userId) {
+  const scope = await resolveRenderScope(request);
+  if (!scope) {
     return NextResponse.json({ error: "Missing user id" }, { status: 401 });
   }
 
@@ -236,7 +269,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const ownedProject = await ensureOwnedProject(userId, body.projectId);
+  const ownedProject = await ensureOwnedProject(body.projectId, scope);
   if (!ownedProject) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
@@ -244,7 +277,7 @@ export async function POST(request: Request) {
   const renderJobDelegate = getRenderJobDelegate();
   const job = await renderJobDelegate.create({
     data: {
-      userId,
+      userId: scope.writeUserId,
       projectId: body.projectId,
       provider: body.provider,
       compositionId: body.compositionId ?? body.projectId,

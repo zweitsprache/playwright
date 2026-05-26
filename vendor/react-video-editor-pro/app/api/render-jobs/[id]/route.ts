@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { AwsRegion, getRenderProgress } from "@remotion/lambda/client";
 import { prisma } from "../../../../lib/prisma";
+import { getAuthenticatedAdminUserId, hasAdminCredentials } from "../../../../../../src/lib/auth";
 import {
   LAMBDA_FUNCTION_NAME,
   REGION,
@@ -14,6 +15,35 @@ const USER_HEADER = "x-user-id";
 function getUserId(req: Request): string | null {
   const id = req.headers.get(USER_HEADER);
   return id && id.trim().length > 0 ? id.trim() : null;
+}
+
+async function resolveRenderScope(request: Request) {
+  const adminUserId = await getAuthenticatedAdminUserId(request);
+
+  if (adminUserId) {
+    return {
+      canAccessAllJobs: true,
+      writeUserId: adminUserId,
+    };
+  }
+
+  if (!hasAdminCredentials()) {
+    return {
+      canAccessAllJobs: true,
+      writeUserId: getUserId(request) ?? "local-editor",
+    };
+  }
+
+  const requestUserId = getUserId(request);
+
+  if (!requestUserId) {
+    return null;
+  }
+
+  return {
+    canAccessAllJobs: false,
+    writeUserId: requestUserId,
+  };
 }
 
 const selectRenderJob = {
@@ -52,7 +82,7 @@ type RenderJobRecord = {
 
 type RenderJobDelegate = {
   findFirst: (args: {
-    where: { id: string; userId: string };
+    where: { id: string; userId?: string };
     select: typeof selectRenderJob;
   }) => Promise<RenderJobRecord | null>;
   update: (args: {
@@ -66,9 +96,12 @@ function getRenderJobDelegate(): RenderJobDelegate {
   return (prisma as unknown as { renderJob: RenderJobDelegate }).renderJob;
 }
 
-async function getOwnedJob(userId: string, id: string) {
+async function getOwnedJob(
+  id: string,
+  scope: { canAccessAllJobs: boolean; writeUserId: string },
+) {
   return getRenderJobDelegate().findFirst({
-    where: { id, userId },
+    where: scope.canAccessAllJobs ? { id } : { id, userId: scope.writeUserId },
     select: selectRenderJob,
   });
 }
@@ -138,13 +171,13 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const userId = getUserId(request);
-  if (!userId) {
+  const scope = await resolveRenderScope(request);
+  if (!scope) {
     return NextResponse.json({ error: "Missing user id" }, { status: 401 });
   }
 
   const { id } = await params;
-  const job = await getOwnedJob(userId, id);
+  const job = await getOwnedJob(id, scope);
   if (!job) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -156,13 +189,13 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const userId = getUserId(request);
-  if (!userId) {
+  const scope = await resolveRenderScope(request);
+  if (!scope) {
     return NextResponse.json({ error: "Missing user id" }, { status: 401 });
   }
 
   const { id } = await params;
-  const job = await getOwnedJob(userId, id);
+  const job = await getOwnedJob(id, scope);
   if (!job) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
