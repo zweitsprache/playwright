@@ -51,7 +51,7 @@ const RenderControls: React.FC<RenderControlsProps> = ({
   const { renderType } = useEditorContext();
   
   // Check if rendering is enabled via environment variable
-  const isRenderingEnabled = process.env.NEXT_PUBLIC_RENDERING_ENABLED === "true";
+  const isRenderingEnabled = process.env.NEXT_PUBLIC_RENDERING_ENABLED !== "false";
   
   // Store multiple renders
   const [renders, setRenders] = React.useState<RenderItem[]>([]);
