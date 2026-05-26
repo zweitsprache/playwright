@@ -78,6 +78,9 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({
     setBackgroundColor,
     playbackRate,
     setPlaybackRate,
+    cameraTrack,
+    setCameraTrack,
+    state: editorState,
   } = useEditorContext();
 
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
@@ -96,21 +99,9 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({
   // itself doesn't trigger a redundant PUT.
   const suppressAutosaveRef = useRef(false);
 
-  // The "state" we autosave. Mirrors what `useAutosave` already snapshots,
-  // minus things that don't need to round-trip (playerRef etc).
-  const state = useMemo(
-    () => ({
-      overlays,
-      aspectRatio,
-      backgroundColor,
-      playbackRate,
-    }),
-    [overlays, aspectRatio, backgroundColor, playbackRate],
-  );
-
   useServerAutosave(
     suppressAutosaveRef.current ? null : currentProjectId,
-    state,
+    editorState,
     {
       onSaving: () => setSyncStatus("saving"),
       onSaved: (at) => {
@@ -149,6 +140,7 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({
       aspectRatio?: string | null;
       backgroundColor?: string | null;
       playbackRate?: number;
+      cameraTrack?: unknown[];
     }) => {
       suppressAutosaveRef.current = true;
       if (Array.isArray(loaded.overlays)) {
@@ -168,30 +160,35 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({
       if (typeof loaded.playbackRate === "number") {
         setPlaybackRate(loaded.playbackRate);
       }
+      if (Array.isArray(loaded.cameraTrack)) {
+        setCameraTrack(loaded.cameraTrack as never);
+      }
       // Give React a tick to settle, then re-enable autosave.
       setTimeout(() => {
         suppressAutosaveRef.current = false;
       }, 250);
     },
-    [resetOverlays, setOverlays, setAspectRatio, setBackgroundColor, setPlaybackRate],
+    [
+      resetOverlays,
+      setOverlays,
+      setAspectRatio,
+      setBackgroundColor,
+      setPlaybackRate,
+      setCameraTrack,
+    ],
   );
 
   const newProject = useCallback(
     async (name?: string) => {
-      const emptyState = {
-        overlays: [],
-        aspectRatio: "16:9",
-        backgroundColor: "white",
-        playbackRate: 1,
-      };
+      const currentState = editorState as Record<string, unknown>;
 
       const created = await apiCreateProject({
         name: name?.trim() || "Untitled project",
-        state: emptyState,
-        aspectRatio: emptyState.aspectRatio,
-        backgroundColor: emptyState.backgroundColor,
+        state: currentState,
+        aspectRatio: (currentState.aspectRatio as string | null | undefined) ?? aspectRatio,
+        backgroundColor:
+          (currentState.backgroundColor as string | null | undefined) ?? backgroundColor,
       });
-      applyStateToEditor(emptyState);
       setCurrentProjectId(created.id);
       setCurrentProjectName(created.name);
       setSyncStatus("saved");
@@ -200,7 +197,7 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({
       await refreshProjects();
       return created;
     },
-    [applyStateToEditor, refreshProjects],
+    [aspectRatio, backgroundColor, editorState, refreshProjects],
   );
 
   const openProject = useCallback(
@@ -211,12 +208,14 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({
         aspectRatio?: string | null;
         backgroundColor?: string | null;
         playbackRate?: number;
+        cameraTrack?: unknown[];
       };
       applyStateToEditor({
         overlays: inner.overlays ?? full.overlays,
         aspectRatio: inner.aspectRatio ?? full.aspectRatio,
         backgroundColor: inner.backgroundColor ?? full.backgroundColor,
         playbackRate: inner.playbackRate,
+        cameraTrack: inner.cameraTrack,
       });
       setCurrentProjectId(full.id);
       setCurrentProjectName(full.name);
@@ -249,15 +248,18 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({
       aspectRatio?: string | null;
       backgroundColor?: string | null;
       playbackRate?: number;
+      cameraTrack?: unknown[];
     };
 
     const duplicated = await apiCreateProject({
       name: `${full.name} copy`,
       state: {
+        ...inner,
         overlays: inner.overlays ?? full.overlays,
         aspectRatio: inner.aspectRatio ?? full.aspectRatio,
         backgroundColor: inner.backgroundColor ?? full.backgroundColor,
         playbackRate: inner.playbackRate ?? playbackRate,
+        cameraTrack: inner.cameraTrack ?? [],
       },
       aspectRatio: inner.aspectRatio ?? full.aspectRatio,
       backgroundColor: inner.backgroundColor ?? full.backgroundColor,
@@ -293,10 +295,13 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!currentProjectId) return;
     setSyncStatus("saving");
     try {
+      const currentState = editorState as Record<string, unknown>;
+
       await apiUpdateProject(currentProjectId, {
-        state: { overlays, aspectRatio, backgroundColor, playbackRate },
-        aspectRatio: aspectRatio ?? null,
-        backgroundColor: backgroundColor ?? null,
+        state: currentState,
+        aspectRatio: (currentState.aspectRatio as string | null | undefined) ?? aspectRatio ?? null,
+        backgroundColor:
+          (currentState.backgroundColor as string | null | undefined) ?? backgroundColor ?? null,
       });
       setSyncStatus("saved");
       setLastSavedAt(Date.now());
@@ -307,10 +312,9 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [
     currentProjectId,
-    overlays,
     aspectRatio,
     backgroundColor,
-    playbackRate,
+    editorState,
   ]);
 
   const value: ProjectsContextValue = {

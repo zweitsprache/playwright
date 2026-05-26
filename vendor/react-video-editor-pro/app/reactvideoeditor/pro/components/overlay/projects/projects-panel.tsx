@@ -192,7 +192,7 @@ export const ProjectsPanel: React.FC = () => {
         <Input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="New project name…"
+          placeholder="Save current session as…"
           disabled={creating}
           className="h-8 text-sm"
         />
@@ -207,12 +207,12 @@ export const ProjectsPanel: React.FC = () => {
           ) : (
             <FilePlus2 className="mr-1 h-3.5 w-3.5" />
           )}
-          New
+          Save as new
         </Button>
       </div>
       <div className="px-1 text-[11px] text-muted-foreground">
-        Creates a new project from the current editor state and switches
-        autosave to it.
+        Saves the current editor session as a new project and switches autosave
+        to that new project.
       </div>
 
       {error && (
