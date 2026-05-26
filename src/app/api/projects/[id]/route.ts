@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { getAuthenticatedAdminUserId } from "@/lib/auth";
+import { getAuthenticatedAdminUserId, hasAdminCredentials } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -21,6 +21,15 @@ async function resolveProjectScope(request: Request) {
     return {
       canAccessAllProjects: true,
       writeUserId: adminUserId,
+      shouldRewriteOwner: true,
+    };
+  }
+
+  if (!hasAdminCredentials()) {
+    return {
+      canAccessAllProjects: true,
+      writeUserId: getRequestUserId(request) ?? "local-editor",
+      shouldRewriteOwner: false,
     };
   }
 
@@ -33,6 +42,7 @@ async function resolveProjectScope(request: Request) {
   return {
     canAccessAllProjects: false,
     writeUserId: requestUserId,
+    shouldRewriteOwner: false,
   };
 }
 
@@ -74,7 +84,7 @@ export async function PUT(
       ...(body.backgroundColor !== undefined
         ? { backgroundColor: body.backgroundColor }
         : {}),
-      ...(scope.canAccessAllProjects ? { userId: scope.writeUserId } : {}),
+      ...(scope.shouldRewriteOwner ? { userId: scope.writeUserId } : {}),
     },
   });
 

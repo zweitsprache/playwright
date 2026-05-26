@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback } from "react";
 import { useLocalMedia } from "../../../contexts/local-media-context";
+import { getServeUrl } from "../../../utils/general/media-url-service";
 import { formatBytes, formatDuration } from "../../../utils/general/format-utils";
 import { Button } from "../../ui/button";
 import { Loader2, Upload, Trash2, Music } from "lucide-react";
@@ -119,14 +120,7 @@ export function LocalMediaGallery({
     // Convert file path to proper src URL for timeline
     // Handle both server paths and blob URLs
     let mediaSrc: string;
-    if (file.path.startsWith('blob:')) {
-      // Direct blob URL - use as-is
-      mediaSrc = file.path;
-    } else {
-      // Server path - convert to use the API route for better content-type handling
-      const apiPath = file.path.startsWith('/') ? file.path.substring(1) : file.path;
-      mediaSrc = `/api/latest/local-media/serve/${apiPath}`;
-    }
+    mediaSrc = getServeUrl(file.path);
     
     // Create enriched file data with proper src for timeline
     const enrichedFileData = {
@@ -287,7 +281,7 @@ export function LocalMediaGallery({
         <div className="aspect-video relative">
           {file.type === "image" && (
             <img
-              src={file.thumbnail || `/api/latest/local-media/serve/${file.path.startsWith('/') ? file.path.substring(1) : file.path}`}
+              src={file.thumbnail || getServeUrl(file.path)}
               alt={file.name}
               className="absolute inset-0 w-full h-full object-cover bg-card"
               draggable={false}

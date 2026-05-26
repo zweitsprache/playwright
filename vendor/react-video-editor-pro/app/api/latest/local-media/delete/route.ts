@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
+import { del } from '@vercel/blob';
 
 /**
  * Handles media file deletion
@@ -22,6 +23,22 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    if (/^https?:\/\//.test(filePath)) {
+      if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        return NextResponse.json(
+          { error: 'Blob deletion is not configured' },
+          { status: 500 }
+        );
+      }
+
+      await del(filePath);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Blob deleted successfully'
+      });
+    }
+
     // Security check: Ensure the file path is within the user's directory
     const userDirPrefix = `/users/${userId}/`;
     if (!filePath.startsWith(userDirPrefix)) {

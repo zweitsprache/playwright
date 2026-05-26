@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
+import { put } from '@vercel/blob';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -29,23 +30,36 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Create user directory if it doesn't exist
+    const fileId = uuidv4();
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${fileId}.${fileExtension}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const blob = await put(`users/${userId}/${fileName}`, buffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: file.type || undefined,
+      });
+
+      return NextResponse.json({
+        success: true,
+        id: fileId,
+        fileName: file.name,
+        serverPath: blob.url,
+        size: file.size,
+        type: file.type,
+      });
+    }
+
+    // Local filesystem fallback for development without Blob configured.
     const userDir = path.join(process.cwd(), 'public', 'users', userId);
     if (!existsSync(userDir)) {
       await mkdir(userDir, { recursive: true });
     }
-    
-    // Generate a unique filename
-    const fileId = uuidv4();
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `${fileId}.${fileExtension}`;
+
     const filePath = path.join(userDir, fileName);
-    
-    // Convert file to buffer and save it
-    const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(filePath, buffer);
-    
-    // Return the file information
     const publicPath = `/users/${userId}/${fileName}`;
     
     return NextResponse.json({

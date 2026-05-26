@@ -5,14 +5,17 @@
  * Provides a unified interface for accessing media files regardless of storage method.
  */
 
+const isAbsoluteHttpUrl = (mediaPath: string): boolean => {
+  return /^https?:\/\//.test(mediaPath);
+};
+
 /**
  * Gets the actual URL for a media file, handling both server paths and blob URLs
  * @param mediaPath - The serverPath from a UserMediaItem
  * @returns The actual URL to use for the media file
  */
 export const getMediaUrl = async (mediaPath: string): Promise<string> => {
-  // If it's already a blob URL, return as-is
-  if (mediaPath.startsWith('blob:')) {
+  if (mediaPath.startsWith('blob:') || isAbsoluteHttpUrl(mediaPath)) {
     return mediaPath;
   }
   
@@ -26,6 +29,10 @@ export const getMediaUrl = async (mediaPath: string): Promise<string> => {
  * @returns The serve endpoint URL
  */
 export const getServeUrl = (serverPath: string): string => {
+  if (serverPath.startsWith('blob:') || isAbsoluteHttpUrl(serverPath)) {
+    return serverPath;
+  }
+
   // Remove leading slash and construct serve URL
   const cleanPath = serverPath.startsWith('/') ? serverPath.slice(1) : serverPath;
   return `/api/latest/local-media/serve/${cleanPath}`;
@@ -46,7 +53,7 @@ export const isBlobUrl = (mediaPath: string): boolean => {
  * @returns True if this is a server path
  */
 export const isServerPath = (mediaPath: string): boolean => {
-  return !mediaPath.startsWith('blob:');
+  return !mediaPath.startsWith('blob:') && !isAbsoluteHttpUrl(mediaPath);
 };
 
 /**

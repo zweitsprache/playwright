@@ -7,6 +7,7 @@ import {
 import { CameraKeyframe, ClipOverlay } from "../../../types";
 import { animationTemplates, getAnimationKey } from "../../../adaptors/default-animation-adaptors";
 import { toAbsoluteUrl } from "../../general/url-helper";
+import { getServeUrl } from "../../general/media-url-service";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useEditorContext } from "../../../contexts/editor-context";
 import { FPS } from "../../../../../constants";
@@ -69,11 +70,7 @@ const promoteBlobUrl = async (blobUrl: string) => {
   }
 
   const uploadResult = await uploadResponse.json();
-  const cleanPath = uploadResult.serverPath.startsWith("/")
-    ? uploadResult.serverPath.slice(1)
-    : uploadResult.serverPath;
-
-  return `/api/latest/local-media/serve/${cleanPath}`;
+  return getServeUrl(uploadResult.serverPath);
 };
 
 /**

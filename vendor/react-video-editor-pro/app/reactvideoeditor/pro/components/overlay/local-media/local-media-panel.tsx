@@ -4,6 +4,7 @@ import { useTimelinePositioning } from "../../../hooks/use-timeline-positioning"
 import { useAspectRatio } from "../../../hooks/use-aspect-ratio";
 import { Overlay, OverlayType } from "../../../types";
 import { LocalMediaGallery } from "./local-media-gallery";
+import { getServeUrl } from "../../../utils/general/media-url-service";
 import { DEFAULT_IMAGE_DURATION_FRAMES, IMAGE_DURATION_PERCENTAGE } from "../../../../../constants";
 
 /**
@@ -35,14 +36,7 @@ export const LocalMediaPanel: React.FC = () => {
 
     // Handle both server paths and blob URLs
     let mediaSrc: string;
-    if (file.path.startsWith('blob:')) {
-      // Direct blob URL - use as-is
-      mediaSrc = file.path;
-    } else {
-      // Server path - convert to use the API route for better content-type handling
-      const apiPath = file.path.startsWith('/') ? file.path.substring(1) : file.path;
-      mediaSrc = `/api/latest/local-media/serve/${apiPath}`;
-    }
+    mediaSrc = getServeUrl(file.path);
 
     // Generate ID first
     const newId = updatedOverlays.length > 0 ? Math.max(...updatedOverlays.map((o) => o.id)) + 1 : 0;
