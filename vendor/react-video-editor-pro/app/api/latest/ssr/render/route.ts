@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       inputPropsWithFonts,
       requestOrigin,
       (task) => after(task),
+      undefined,
     );
     
     const endTime = performance.now();

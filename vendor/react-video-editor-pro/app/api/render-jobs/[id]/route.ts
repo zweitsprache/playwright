@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { AwsRegion, getRenderProgress } from "@remotion/lambda/client";
 import { prisma } from "../../../../lib/prisma";
-import { getRenderState } from "../../latest/ssr/lib/render-state";
 import {
   LAMBDA_FUNCTION_NAME,
   REGION,
@@ -132,69 +131,7 @@ async function syncLambdaJob(job: RenderJobRecord) {
 }
 
 async function syncSsrJob(job: RenderJobRecord) {
-  if (!job.renderId) {
-    return getRenderJobDelegate().update({
-      where: { id: job.id },
-      data: {
-        status: "error",
-        progress: job.progress,
-        errorMessage: "SSR render job is missing renderId",
-      },
-      select: selectRenderJob,
-    });
-  }
-
-  const renderState = getRenderState(job.renderId);
-  if (!renderState) {
-    return getRenderJobDelegate().update({
-      where: { id: job.id },
-      data: {
-        status: "error",
-        progress: job.progress,
-        errorMessage: `No SSR render state found for ${job.renderId}`,
-      },
-      select: selectRenderJob,
-    });
-  }
-
-  if (renderState.status === "error") {
-    return getRenderJobDelegate().update({
-      where: { id: job.id },
-      data: {
-        status: "error",
-        progress: job.progress,
-        errorMessage: renderState.error ?? "SSR render failed",
-      },
-      select: selectRenderJob,
-    });
-  }
-
-  if (renderState.status === "done") {
-    return getRenderJobDelegate().update({
-      where: { id: job.id },
-      data: {
-        status: "done",
-        progress: 1,
-        outputUrl: renderState.url ?? null,
-        outputSize: renderState.size ?? null,
-        errorMessage: null,
-      },
-      select: selectRenderJob,
-    });
-  }
-
-  return getRenderJobDelegate().update({
-    where: { id: job.id },
-    data: {
-      status: "rendering",
-        progress:
-          typeof renderState.progress === "number"
-            ? Math.max(0.03, renderState.progress)
-            : job.progress,
-      errorMessage: null,
-    },
-    select: selectRenderJob,
-  });
+  return job;
 }
 
 export async function GET(

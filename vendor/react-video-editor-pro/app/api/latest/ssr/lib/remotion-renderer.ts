@@ -32,6 +32,12 @@ export const renderSizes = new Map<string, number>();
 
 type RenderScheduler = (task: () => Promise<void>) => void;
 
+type RenderLifecycleHooks = {
+  onProgress?: (progress: number) => Promise<void> | void;
+  onComplete?: (result: { url: string; size: number }) => Promise<void> | void;
+  onError?: (errorMessage: string) => Promise<void> | void;
+};
+
 const uploadRenderedVideo = async (renderId: string, localOutputPath: string) => {
   const fileBuffer = await fs.promises.readFile(localOutputPath);
   const blob = await put(`rendered-videos/${renderId}.mp4`, fileBuffer, {
@@ -48,10 +54,12 @@ const executeRender = async (
   compositionId: string,
   inputProps: Record<string, unknown>,
   baseUrlOverride?: string,
+  hooks?: RenderLifecycleHooks,
 ) => {
   try {
     // Update progress as rendering proceeds
     updateRenderProgress(renderId, 0);
+    await hooks?.onProgress?.(0);
 
     // Get the base URL for serving media files. Prefer the origin of the
     // incoming request so we always fetch from this server, not the
@@ -145,6 +153,7 @@ const executeRender = async (
         onProgress: ((progress) => {
           // Extract just the progress percentage from the detailed progress object
           updateRenderProgress(renderId, progress.progress);
+          void hooks?.onProgress?.(progress.progress);
         }) as RenderMediaOnProgress,
         // Highest quality video settings
         crf: 1, // Lowest CRF for near-lossless quality (range 1-51, where 1 is highest quality)
@@ -162,9 +171,11 @@ const executeRender = async (
     }
 
     completeRender(renderId, outputPath, stats.size);
+    await hooks?.onComplete?.({ url: outputPath, size: stats.size });
     console.log(`Render ${renderId} completed successfully`);
   } catch (error: any) {
     failRender(renderId, error.message);
+    await hooks?.onError?.(error.message);
     console.error(`Render ${renderId} failed:`, error);
   }
 };
@@ -177,6 +188,7 @@ export async function startRendering(
   inputProps: Record<string, unknown>,
   baseUrlOverride?: string,
   schedule?: RenderScheduler,
+  hooks?: RenderLifecycleHooks,
 ) {
   const renderId = uuidv4();
 
@@ -186,7 +198,7 @@ export async function startRendering(
     timestamp: Date.now(),
   });
 
-  const task = () => executeRender(renderId, compositionId, inputProps, baseUrlOverride);
+  const task = () => executeRender(renderId, compositionId, inputProps, baseUrlOverride, hooks);
 
   if (schedule) {
     schedule(task);

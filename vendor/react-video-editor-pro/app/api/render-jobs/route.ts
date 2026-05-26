@@ -111,6 +111,7 @@ const prepareInputProps = (inputProps: RenderPayload) => {
 async function startProviderRender(
   request: Request,
   provider: "lambda" | "ssr",
+  jobId: string,
   compositionId: string,
   inputProps: RenderPayload,
 ) {
@@ -123,6 +124,42 @@ async function startProviderRender(
       preparedInputProps,
       requestOrigin,
       (task) => after(task),
+      {
+        onProgress: async (progress) => {
+          await getRenderJobDelegate().update({
+            where: { id: jobId },
+            data: {
+              status: "rendering",
+              progress: Math.max(0.03, progress),
+              errorMessage: null,
+            },
+            select: selectRenderJob,
+          });
+        },
+        onComplete: async ({ url, size }) => {
+          await getRenderJobDelegate().update({
+            where: { id: jobId },
+            data: {
+              status: "done",
+              progress: 1,
+              outputUrl: url,
+              outputSize: size,
+              errorMessage: null,
+            },
+            select: selectRenderJob,
+          });
+        },
+        onError: async (errorMessage) => {
+          await getRenderJobDelegate().update({
+            where: { id: jobId },
+            data: {
+              status: "error",
+              errorMessage,
+            },
+            select: selectRenderJob,
+          });
+        },
+      },
     );
     return {
       renderId,
@@ -224,6 +261,7 @@ export async function POST(request: Request) {
     const providerState = await startProviderRender(
       request,
       body.provider,
+      createdJob.id,
       createdJob.compositionId,
       body.inputProps,
     );
