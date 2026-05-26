@@ -91,6 +91,39 @@ export async function isAuthenticatedSession(sessionValue: string | undefined) {
   return Boolean(expectedSignature && expectedSignature === providedSignature);
 }
 
+function getCookieValue(cookieHeader: string, name: string) {
+  const cookies = cookieHeader.split(";");
+
+  for (const cookie of cookies) {
+    const trimmedCookie = cookie.trim();
+    if (!trimmedCookie.startsWith(`${name}=`)) {
+      continue;
+    }
+
+    return trimmedCookie.slice(name.length + 1);
+  }
+
+  return undefined;
+}
+
+export async function getAuthenticatedAdminUserId(request: Request) {
+  const cookieHeader = request.headers.get("cookie");
+
+  if (!cookieHeader) {
+    return null;
+  }
+
+  const sessionValue = getCookieValue(cookieHeader, SESSION_COOKIE_NAME);
+  const isAuthenticated = await isAuthenticatedSession(sessionValue);
+  const configuredEmail = getAdminCredentials().email;
+
+  if (!isAuthenticated || !configuredEmail) {
+    return null;
+  }
+
+  return configuredEmail;
+}
+
 export function sanitizeNextPath(rawValue: string | null | undefined) {
   if (!rawValue) {
     return "/";
