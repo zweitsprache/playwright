@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { AwsRegion, renderMediaOnLambda } from "@remotion/lambda/client";
 import { prisma } from "../../../lib/prisma";
 import { startRendering } from "../latest/ssr/lib/remotion-renderer";
@@ -118,7 +118,12 @@ async function startProviderRender(
 
   if (provider === "ssr") {
     const requestOrigin = new URL(request.url).origin;
-    const renderId = await startRendering(compositionId, preparedInputProps, requestOrigin);
+    const renderId = await startRendering(
+      compositionId,
+      preparedInputProps,
+      requestOrigin,
+      (task) => after(task),
+    );
     return {
       renderId,
       bucketName: null,

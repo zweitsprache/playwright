@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { startRendering } from '../lib/remotion-renderer';
 import { collectFontInfoFromOverlays } from '../../../../reactvideoeditor/pro/utils/text/collect-font-info-from-items';
@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
       validatedData.id,
       inputPropsWithFonts,
       requestOrigin,
+      (task) => after(task),
     );
     
     const endTime = performance.now();

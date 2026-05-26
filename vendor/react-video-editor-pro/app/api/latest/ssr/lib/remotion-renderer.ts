@@ -30,6 +30,8 @@ export const renderErrors = new Map<string, string>();
 export const renderUrls = new Map<string, string>();
 export const renderSizes = new Map<string, number>();
 
+type RenderScheduler = (task: () => Promise<void>) => void;
+
 const uploadRenderedVideo = async (renderId: string, localOutputPath: string) => {
   const fileBuffer = await fs.promises.readFile(localOutputPath);
   const blob = await put(`rendered-videos/${renderId}.mp4`, fileBuffer, {
@@ -41,96 +43,83 @@ const uploadRenderedVideo = async (renderId: string, localOutputPath: string) =>
   return blob.url;
 };
 
-/**
- * Custom renderer that uses browser-based rendering to avoid platform-specific dependencies
- */
-export async function startRendering(
+const executeRender = async (
+  renderId: string,
   compositionId: string,
   inputProps: Record<string, unknown>,
   baseUrlOverride?: string,
-) {
-  const renderId = uuidv4();
+) => {
+  try {
+    // Update progress as rendering proceeds
+    updateRenderProgress(renderId, 0);
 
-  // Initialize render state
-  saveRenderState(renderId, {
-    status: "rendering",
-    progress: 0,
-    timestamp: Date.now(),
-  });
+    // Get the base URL for serving media files. Prefer the origin of the
+    // incoming request so we always fetch from this server, not the
+    // hardcoded localhost:3000 fallback in getBaseUrl().
+    const baseUrl = baseUrlOverride ?? getBaseUrl();
 
-  // Start rendering asynchronously
-  (async () => {
-    try {
-      // Update progress as rendering proceeds
-      updateRenderProgress(renderId, 0);
-
-      // Get the base URL for serving media files. Prefer the origin of the
-      // incoming request so we always fetch from this server, not the
-      // hardcoded localhost:3000 fallback in getBaseUrl().
-      const baseUrl = baseUrlOverride ?? getBaseUrl();
-
-      // Bundle the video
-      const bundleLocation = await bundle(
-        path.join(
-          process.cwd(),
-          "vendor",
-          "react-video-editor-pro",
-          "app",
-          "reactvideoeditor",
-          "pro",
-          "utils",
-          "remotion",
-          "index.ts"
-        ),
-        undefined,
-        {
-          // Disable all platform-specific compositors
-          webpackOverride: (config) => ({
-            ...config,
-            resolve: {
-              ...config.resolve,
-              fallback: {
-                ...config.resolve?.fallback,
-                // Explicitly disable ALL compositor packages
-                "@remotion/compositor": false,
-                "@remotion/compositor-darwin-arm64": false,
-                "@remotion/compositor-darwin-x64": false,
-                "@remotion/compositor-linux-x64": false,
-                "@remotion/compositor-linux-arm64": false,
-                "@remotion/compositor-win32-x64-msvc": false,
-                "@remotion/compositor-windows-x64": false,
-              },
+    // Bundle the video
+    const bundleLocation = await bundle(
+      path.join(
+        process.cwd(),
+        "vendor",
+        "react-video-editor-pro",
+        "app",
+        "reactvideoeditor",
+        "pro",
+        "utils",
+        "remotion",
+        "index.ts"
+      ),
+      undefined,
+      {
+        // Disable all platform-specific compositors
+        webpackOverride: (config) => ({
+          ...config,
+          resolve: {
+            ...config.resolve,
+            fallback: {
+              ...config.resolve?.fallback,
+              // Explicitly disable ALL compositor packages
+              "@remotion/compositor": false,
+              "@remotion/compositor-darwin-arm64": false,
+              "@remotion/compositor-darwin-x64": false,
+              "@remotion/compositor-linux-x64": false,
+              "@remotion/compositor-linux-arm64": false,
+              "@remotion/compositor-win32-x64-msvc": false,
+              "@remotion/compositor-windows-x64": false,
             },
-          }),
-        }
-      );
+          },
+        }),
+      }
+    );
 
-      // Select the composition
-      const composition = await selectComposition({
-        serveUrl: bundleLocation,
-        id: compositionId,
-        inputProps: {
-          ...inputProps,
-          // Pass the base URL to the composition for media file access
-          baseUrl,
-        },
-      });
+    // Select the composition
+    const composition = await selectComposition({
+      serveUrl: bundleLocation,
+      id: compositionId,
+      inputProps: {
+        ...inputProps,
+        // Pass the base URL to the composition for media file access
+        baseUrl,
+      },
+    });
 
-      // Get the actual duration from inputProps or use composition's duration
-      const actualDurationInFrames =
-        (inputProps.durationInFrames as number) || composition.durationInFrames;
+    // Get the actual duration from inputProps or use composition's duration
+    const actualDurationInFrames =
+      (inputProps.durationInFrames as number) || composition.durationInFrames;
       
-      // Get the actual dimensions from inputProps or use composition's dimensions
-      const actualWidth = (inputProps.width as number) || composition.width;
-      const actualHeight = (inputProps.height as number) || composition.height;
+    // Get the actual dimensions from inputProps or use composition's dimensions
+    const actualWidth = (inputProps.width as number) || composition.width;
+    const actualHeight = (inputProps.height as number) || composition.height;
       
-      console.log(`Using actual duration: ${actualDurationInFrames} frames`);
-      console.log(`Using actual dimensions: ${actualWidth}x${actualHeight}`);
+    console.log(`Using actual duration: ${actualDurationInFrames} frames`);
+    console.log(`Using actual dimensions: ${actualWidth}x${actualHeight}`);
 
-      const localOutputPath = path.join(VIDEOS_DIR, `${renderId}.mp4`);
+    const localOutputPath = path.join(VIDEOS_DIR, `${renderId}.mp4`);
 
-      // Render the video using chromium
-      await renderMedia({
+    // Render the video using chromium
+    await renderMedia({
         codec: "h264",
         composition: {
           ...composition,
@@ -165,20 +154,45 @@ export async function startRendering(
         jpegQuality: 100, // Maximum JPEG quality for any JPEG operations
       });
 
-      const stats = fs.statSync(localOutputPath);
-      let outputPath = `/rendered-videos/${renderId}.mp4`;
+    const stats = fs.statSync(localOutputPath);
+    let outputPath = `/rendered-videos/${renderId}.mp4`;
 
-      if (process.env.BLOB_READ_WRITE_TOKEN) {
-        outputPath = await uploadRenderedVideo(renderId, localOutputPath);
-      }
-
-      completeRender(renderId, outputPath, stats.size);
-      console.log(`Render ${renderId} completed successfully`);
-    } catch (error: any) {
-      failRender(renderId, error.message);
-      console.error(`Render ${renderId} failed:`, error);
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      outputPath = await uploadRenderedVideo(renderId, localOutputPath);
     }
-  })();
+
+    completeRender(renderId, outputPath, stats.size);
+    console.log(`Render ${renderId} completed successfully`);
+  } catch (error: any) {
+    failRender(renderId, error.message);
+    console.error(`Render ${renderId} failed:`, error);
+  }
+};
+
+/**
+ * Custom renderer that uses browser-based rendering to avoid platform-specific dependencies
+ */
+export async function startRendering(
+  compositionId: string,
+  inputProps: Record<string, unknown>,
+  baseUrlOverride?: string,
+  schedule?: RenderScheduler,
+) {
+  const renderId = uuidv4();
+
+  saveRenderState(renderId, {
+    status: "rendering",
+    progress: 0,
+    timestamp: Date.now(),
+  });
+
+  const task = () => executeRender(renderId, compositionId, inputProps, baseUrlOverride);
+
+  if (schedule) {
+    schedule(task);
+  } else {
+    void task();
+  }
 
   return renderId;
 }
