@@ -295,6 +295,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 inputProps={editorInputProps}
                 errorFallback={() => <></>}
                 overflowVisible
+                // Give every <Audio>/video its own dedicated <audio> element
+                // instead of round-robin'ing a pool of 5. Pool reassignment at
+                // Sequence mount/unmount (= every video cut) was glitching the
+                // voiceover audio while video kept playing.
+                // https://www.remotion.dev/docs/player/api#numberofsharedaudiotags
+                numberOfSharedAudioTags={0}
               />
             </div>
           </div>
@@ -328,6 +334,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               inputProps={playerOnlyInputProps}
               errorFallback={() => <></>}
               overflowVisible
+              numberOfSharedAudioTags={0}
             />
           </div>
         </div>

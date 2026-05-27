@@ -67,7 +67,6 @@ export const Layer: React.FC<{
         key={overlay.id}
         from={overlay.from}
         durationInFrames={overlay.durationInFrames}
-        premountFor={60}
       >
         <LayerContent overlay={overlay} inheritedCameraState={inheritedCameraState} {...(baseUrl && { baseUrl })} {...(fontInfos && { fontInfos })} />
       </Sequence>
@@ -97,7 +96,7 @@ export const Layer: React.FC<{
       key={overlay.id}
       from={overlay.from}
       durationInFrames={overlay.durationInFrames + cutFlickerPad}
-      premountFor={120}
+      premountFor={30}
     >
       <div style={style}>
         <LayerContent overlay={overlay} inheritedCameraState={inheritedCameraState} {...(baseUrl && { baseUrl })} {...(fontInfos && { fontInfos })} />

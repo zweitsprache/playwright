@@ -5,6 +5,7 @@ import {
   Html5Video,
   OffthreadVideo,
   Freeze,
+  getRemotionEnvironment,
 } from "remotion";
 import { CameraKeyframe, ClipOverlay } from "../../../types";
 import { animationTemplates, getAnimationKey } from "../../../adaptors/default-animation-adaptors";
@@ -131,7 +132,18 @@ export const VideoLayerContent: React.FC<VideoLayerContentProps> = ({
   }, [overlay.src]);
 
   useEffect(() => {
-    const handle = delayRender("Loading video");
+    // delayRender halts Player playback until continueRender fires. In preview
+    // that creates a visible stop at every clip mount (= every cut), because
+    // we wait for `loadedmetadata` on a side-channel <video> element.
+    // OffthreadVideo / Html5Video handle their own loading in the Player, so
+    // the delayRender gate is only needed for Lambda/SSR rendering. We still
+    // run the preload in preview to keep the blob: URL auto-recovery path,
+    // just without blocking the Player.
+    const isRendering = getRemotionEnvironment().isRendering;
+    const handle = isRendering ? delayRender("Loading video") : null;
+    const release = () => {
+      if (handle !== null) continueRender(handle);
+    };
 
     // Create a video element to preload the video
     const video = document.createElement("video");
@@ -139,7 +151,7 @@ export const VideoLayerContent: React.FC<VideoLayerContentProps> = ({
     
 
     const handleLoadedMetadata = () => {
-      continueRender(handle);
+      release();
     };
 
     const handleError = async (error: ErrorEvent) => {
@@ -160,14 +172,14 @@ export const VideoLayerContent: React.FC<VideoLayerContentProps> = ({
               src: uploadedSrc,
             }));
           }
-          continueRender(handle);
+          release();
           return;
         } catch (recoveryError) {
           console.error(`Error recovering video ${activeSrc}:`, recoveryError);
         }
       }
 
-      continueRender(handle);
+      release();
     };
 
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
@@ -177,7 +189,7 @@ export const VideoLayerContent: React.FC<VideoLayerContentProps> = ({
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("error", handleError);
       // Ensure we don't leave hanging render delays
-      continueRender(handle);
+      release();
     };
   }, [activeSrc, changeOverlay, overlay.id, videoSrc]);
 
