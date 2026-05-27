@@ -7,6 +7,16 @@ import { useMediaAdaptors } from '../../../../contexts/media-adaptor-context';
 import { useAspectRatio } from '../../../../hooks/use-aspect-ratio';
 import { calculateIntelligentAssetSize, getAssetDimensions } from '../../../../utils/asset-sizing';
 
+const quantizeFrameBounds = (startSeconds: number, endSeconds: number) => {
+  const startFrame = Math.round(startSeconds * FPS);
+  const endFrame = Math.max(startFrame + 1, Math.round(endSeconds * FPS));
+
+  return {
+    startFrame,
+    durationInFrames: endFrame - startFrame,
+  };
+};
+
 interface UseTimelineHandlersProps {
   overlays: Overlay[];
   playerRef: React.RefObject<any>;
@@ -171,11 +181,12 @@ export const useTimelineHandlers = ({
     
     if (overlay) {
       const newRow = parseInt(newTrackId.replace('track-', ''), 10);
+      const { startFrame, durationInFrames } = quantizeFrameBounds(newStart, newEnd);
       
       const updatedOverlay: Overlay = {
         ...overlay,
-        from: Math.round(newStart * FPS),
-        durationInFrames: Math.max(1, Math.round((newEnd - newStart) * FPS)),
+        from: startFrame,
+        durationInFrames,
         row: newRow,
       };
 
@@ -198,10 +209,11 @@ export const useTimelineHandlers = ({
     const overlayId = parseInt(itemId, 10);
     const overlay = overlays.find(o => o.id === overlayId);
     if (overlay) {
+      const { startFrame, durationInFrames } = quantizeFrameBounds(newStart, newEnd);
       const updatedOverlay: Overlay = {
         ...overlay,
-        from: Math.round(newStart * FPS),
-        durationInFrames: Math.max(1, Math.round((newEnd - newStart) * FPS)),
+        from: startFrame,
+        durationInFrames,
       };
       handleOverlayChange(updatedOverlay);
     }

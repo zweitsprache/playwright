@@ -10,7 +10,11 @@ import { getEffectiveClipCameraKeyframes, getInheritedCameraStateForClip, splitC
  * @param waitForAutosave - If true, wait for autosave check before using initialOverlays
  * @returns Object containing overlay state and management functions
  */
-export const useOverlays = (initialOverlays?: Overlay[], waitForAutosave?: boolean) => {
+export const useOverlays = (
+  initialOverlays?: Overlay[],
+  waitForAutosave?: boolean,
+  fps = 30,
+) => {
   // Initialize with provided overlays or default overlays (unless waiting for autosave)
   const [overlays, setOverlays] = useState<Overlay[]>(
     waitForAutosave ? [] : (initialOverlays || [])
@@ -184,8 +188,8 @@ export const useOverlays = (initialOverlays?: Overlay[], waitForAutosave?: boole
    * splitOverlay(1, 100)
    */
   const splitOverlay = useCallback((id: number, splitFrame: number) => {
-    const fps = 30; // Make this configurable
-    const msPerFrame = 1000 / fps;
+    const safeFps = fps > 0 ? fps : 30;
+    const msPerFrame = 1000 / safeFps;
 
     setOverlays((prevOverlays) => {
       const overlayToSplit = prevOverlays.find((overlay) => overlay.id === id);
@@ -215,7 +219,8 @@ export const useOverlays = (initialOverlays?: Overlay[], waitForAutosave?: boole
       // Calculate start times for media overlays
       const secondHalfStartTime = calculateSecondHalfStartTime(
         overlayToSplit,
-        firstPartDuration
+        firstPartDuration,
+        safeFps,
       );
       const effectiveCameraKeyframes =
         overlayToSplit.type === OverlayType.VIDEO || overlayToSplit.type === OverlayType.IMAGE
@@ -233,6 +238,7 @@ export const useOverlays = (initialOverlays?: Overlay[], waitForAutosave?: boole
         firstPartDuration,
         secondPartDuration,
         secondHalfStartTime,
+        safeFps,
         effectiveCameraKeyframes
       );
 
@@ -242,7 +248,7 @@ export const useOverlays = (initialOverlays?: Overlay[], waitForAutosave?: boole
         .map((overlay) => (overlay.id === id ? firstHalf : overlay))
         .concat(secondHalf);
     });
-  }, []);
+  }, [fps]);
 
   const updateOverlayStyles = useCallback(
     (overlayId: number, styles: Partial<CaptionStyles>) => {
@@ -314,10 +320,11 @@ export const useOverlays = (initialOverlays?: Overlay[], waitForAutosave?: boole
  */
 const calculateSecondHalfStartTime = (
   overlay: Overlay,
-  firstPartDurationInFrames: number
+  firstPartDurationInFrames: number,
+  fps: number,
 ): number => {
-  // Convert frames to seconds (assuming 30 FPS)
-  const firstPartDurationInSeconds = firstPartDurationInFrames / 30;
+  const safeFps = fps > 0 ? fps : 30;
+  const firstPartDurationInSeconds = firstPartDurationInFrames / safeFps;
   
   if (overlay.type === OverlayType.VIDEO) {
     return (overlay.videoStartTime || 0) + firstPartDurationInSeconds;
@@ -341,10 +348,11 @@ const createSplitOverlays = (
   firstPartDuration: number,
   secondPartDuration: number,
   secondHalfStartTime: number,
+  fps: number,
   effectiveCameraKeyframes?: CameraKeyframe[],
 ): [Overlay, Overlay] => {
-  const fps = 30;
-  const msPerFrame = 1000 / fps;
+  const safeFps = fps > 0 ? fps : 30;
+  const msPerFrame = 1000 / safeFps;
   const splitTimeMs = splitFrame * msPerFrame;
 
   if (original.type === OverlayType.CAPTION) {
@@ -470,9 +478,9 @@ const createSplitOverlays = (
   let secondHalfWaveformData = null;
 
   if (original.type === OverlayType.SOUND && (original as any).waveformData) {
-    const totalDurationSeconds = original.durationInFrames / fps;
-    const firstDurationSeconds = firstPartDuration / fps;
-    const secondDurationSeconds = secondPartDuration / fps;
+    const totalDurationSeconds = original.durationInFrames / safeFps;
+    const firstDurationSeconds = firstPartDuration / safeFps;
+    const secondDurationSeconds = secondPartDuration / safeFps;
 
     [firstHalfWaveformData, secondHalfWaveformData] = splitWaveformData(
       (original as any).waveformData,

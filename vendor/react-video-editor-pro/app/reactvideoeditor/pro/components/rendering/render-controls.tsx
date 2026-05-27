@@ -57,6 +57,7 @@ const RenderControls: React.FC<RenderControlsProps> = ({
   const [renders, setRenders] = React.useState<RenderItem[]>([]);
   // Track if there are new renders
   const [hasNewRender, setHasNewRender] = React.useState(false);
+  const lastAutoDownloadedUrlRef = React.useRef<string | null>(null);
 
   // Add new render to the list when completed
   React.useEffect(() => {
@@ -106,6 +107,19 @@ const RenderControls: React.FC<RenderControlsProps> = ({
     a.click();
     document.body.removeChild(a);
   };
+
+  React.useEffect(() => {
+    if (state.status !== "done" || !state.url) {
+      return;
+    }
+
+    if (lastAutoDownloadedUrlRef.current === state.url) {
+      return;
+    }
+
+    lastAutoDownloadedUrlRef.current = state.url;
+    handleDownload(state.url);
+  }, [state.status, state.url, renderType]);
 
   const getDisplayFileName = (url: string) => {
     if (renderType === "ssr") {

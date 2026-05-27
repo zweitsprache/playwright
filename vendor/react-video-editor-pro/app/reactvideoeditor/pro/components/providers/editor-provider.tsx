@@ -151,7 +151,7 @@ export const EditorProvider: React.FC<EditorProviderProps> = ({
     splitOverlay,
     handleOverlayChange,
     resetOverlays,
-  } = useOverlays(defaultOverlays);
+  } = useOverlays(defaultOverlays, undefined, fps);
 
   // Update overlays when defaultOverlays change AND project is loading
   // This ensures project overlays are applied when they finish loading

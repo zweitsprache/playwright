@@ -8,7 +8,10 @@ import { useThemeConfig } from "../../contexts/theme-context";
 import RenderControls from "../rendering/render-controls";
 import { SaveControls } from "./save-controls";
 import { useEditorContext } from "../../contexts/editor-context";
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { Button } from "../ui/button";
+import { Download } from "lucide-react";
+import { OverlayType, SoundOverlay } from "../../types";
 
 export interface EditorHeaderProps {
   /** Array of available custom themes for the theme dropdown */
@@ -73,7 +76,56 @@ export function EditorHeader({
    * - renderMedia: Function to handle media rendering/export
    * - renderState: Current render state (separate from editor state)
    */
-  const { renderMedia, renderState, saveProject } = useEditorContext();
+  const { renderMedia, renderState, saveProject, overlays, fps } = useEditorContext();
+
+  const voiceoverEntries = useMemo(() => {
+    return overlays
+      .filter(
+        (overlay): overlay is SoundOverlay =>
+          overlay.type === OverlayType.SOUND && Boolean(overlay.voiceover?.text?.trim()),
+      )
+      .sort((left, right) => left.from - right.from)
+      .map((overlay, index) => ({
+        index: index + 1,
+        startFrame: overlay.from,
+        startSeconds: overlay.from / fps,
+        text: overlay.voiceover!.text.trim(),
+        voiceId: overlay.voiceover!.voiceId,
+        provider: overlay.voiceover!.provider,
+      }));
+  }, [fps, overlays]);
+
+  const handleDownloadVoiceovers = useCallback(() => {
+    if (!voiceoverEntries.length) {
+      return;
+    }
+
+    const content = voiceoverEntries
+      .map((entry) => {
+        const minutes = Math.floor(entry.startSeconds / 60);
+        const seconds = Math.floor(entry.startSeconds % 60);
+        const timestamp = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+        return [
+          `Voiceover ${entry.index}`,
+          `Start: ${timestamp} (${entry.startFrame}f)`,
+          `Voice: ${entry.provider}/${entry.voiceId}`,
+          "",
+          entry.text,
+        ].join("\n");
+      })
+      .join("\n\n---\n\n");
+
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = "voiceovers.txt";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
+  }, [voiceoverEntries]);
 
   // Get theme configuration from context if available
   const themeConfig = useThemeConfig();
@@ -132,6 +184,21 @@ export function EditorHeader({
 
       {/* Save controls */}
       <SaveControls onSave={saveProject || (() => Promise.resolve())} />
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="relative hover:bg-accent text-foreground"
+        onClick={handleDownloadVoiceovers}
+        disabled={voiceoverEntries.length === 0}
+        title={
+          voiceoverEntries.length === 0
+            ? "No voiceovers in this project"
+            : "Download all voiceover text"
+        }
+      >
+        <Download className="w-3.5 h-3.5" />
+      </Button>
 
       {/* Render controls */}
       <RenderControls

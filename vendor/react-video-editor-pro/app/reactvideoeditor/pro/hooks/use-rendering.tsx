@@ -25,14 +25,51 @@ const guessFileExtension = (blob: Blob, fallbackName: string) => {
   return "bin";
 };
 
-const uploadBlobUrlForRender = async (
-  blobUrl: string,
+const blobToDataUrl = async (blob: Blob) => {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error("Failed to encode media as data URL"));
+    };
+    reader.onerror = () => {
+      reject(reader.error ?? new Error("Failed to read media blob"));
+    };
+    reader.readAsDataURL(blob);
+  });
+};
+
+const isAbsoluteHttpUrl = (url: string) => /^https?:\/\//.test(url);
+
+const isLocalOnlyMediaUrl = (url: string) => {
+  if (url.startsWith("/users/") || url.startsWith("/api/latest/local-media/serve/")) {
+    return true;
+  }
+
+  if (!isAbsoluteHttpUrl(url) || typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+};
+
+const uploadInlineMediaForRender = async (
+  mediaUrl: string,
   userId: string,
   fallbackName: string,
 ) => {
-  const blobResponse = await fetch(blobUrl);
+  const blobResponse = await fetch(mediaUrl);
   if (!blobResponse.ok) {
-    throw new Error(`Failed to read local media blob: ${blobResponse.statusText}`);
+    throw new Error(`Failed to read local render media: ${blobResponse.statusText}`);
   }
 
   const blob = await blobResponse.blob();
@@ -68,7 +105,11 @@ const ensureRenderableInputProps = async (
   const uploadedBlobUrls = new Map<string, string>();
 
   const ensureRenderableUrl = async (url: string, fallbackName: string) => {
-    if (!url.startsWith("blob:")) {
+    if (
+      !url.startsWith("blob:") &&
+      !url.startsWith("data:") &&
+      !isLocalOnlyMediaUrl(url)
+    ) {
       return url;
     }
 
@@ -77,9 +118,34 @@ const ensureRenderableInputProps = async (
       return cachedUrl;
     }
 
-    const uploadedUrl = await uploadBlobUrlForRender(url, userId, fallbackName);
-    uploadedBlobUrls.set(url, uploadedUrl);
-    return uploadedUrl;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to read local render media: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+
+    try {
+      const uploadedUrl = await uploadInlineMediaForRender(
+        await blobToDataUrl(blob),
+        userId,
+        fallbackName,
+      );
+
+      if (!isAbsoluteHttpUrl(uploadedUrl)) {
+        const dataUrl = await blobToDataUrl(blob);
+        uploadedBlobUrls.set(url, dataUrl);
+        return dataUrl;
+      }
+
+      uploadedBlobUrls.set(url, uploadedUrl);
+      return uploadedUrl;
+    } catch (error) {
+      const dataUrl = await blobToDataUrl(blob);
+      console.warn("Falling back to inline media for render:", error);
+      uploadedBlobUrls.set(url, dataUrl);
+      return dataUrl;
+    }
   };
 
   const overlays = await Promise.all(

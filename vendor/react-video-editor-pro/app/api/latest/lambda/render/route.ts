@@ -15,7 +15,11 @@ import {
  */
 const LAMBDA_CONFIG = {
   FUNCTION_NAME: LAMBDA_FUNCTION_NAME,
-  FRAMES_PER_LAMBDA: 100,
+  FRAMES_PER_LAMBDA: Number.isFinite(
+    Number.parseInt(process.env.REMOTION_LAMBDA_FRAMES_PER_FUNCTION ?? "300", 10),
+  )
+    ? Number.parseInt(process.env.REMOTION_LAMBDA_FRAMES_PER_FUNCTION ?? "300", 10)
+    : 300,
   MAX_RETRIES: 2,
   CODEC: "h264" as const,
 } as const;

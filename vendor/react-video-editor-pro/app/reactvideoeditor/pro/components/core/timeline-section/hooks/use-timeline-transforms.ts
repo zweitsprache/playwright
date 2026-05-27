@@ -3,6 +3,16 @@ import { Overlay, OverlayType } from '../../../../types';
 import { TimelineTrack, TimelineItem } from '../../../advanced-timeline/types';
 import { FPS } from '../../../../../../constants';
 
+const quantizeFrameBounds = (startSeconds: number, endSeconds: number) => {
+  const startFrame = Math.round(startSeconds * FPS);
+  const endFrame = Math.max(startFrame + 1, Math.round(endSeconds * FPS));
+
+  return {
+    startFrame,
+    durationInFrames: endFrame - startFrame,
+  };
+};
+
 /**
  * Hook to handle data transformation between overlays and timeline tracks
  */
@@ -39,7 +49,7 @@ export const useTimelineTransforms = () => {
           end: (overlay.from + overlay.durationInFrames) / FPS,
           label: getOverlayLabel(overlay),
           type: mapOverlayTypeToTimelineType(overlay.type),
-          color: getOverlayColor(overlay.type),
+          color: getOverlayColor(overlay),
           data: overlay, // Store the original overlay data
         };
 
@@ -112,11 +122,15 @@ export const useTimelineTransforms = () => {
         if (item.data && typeof item.data === 'object') {
           // Use the original overlay data if available
           const originalOverlay = item.data as Overlay;
+          const { startFrame, durationInFrames } = quantizeFrameBounds(
+            item.start,
+            item.end,
+          );
           
           const updatedOverlay: Overlay = {
             ...originalOverlay,
-            from: Math.round(item.start * FPS), // Convert seconds to frames
-            durationInFrames: Math.max(1, Math.round((item.end - item.start) * FPS)),
+            from: startFrame,
+            durationInFrames,
             row: trackIndex,
           };
         
@@ -201,8 +215,12 @@ const mapOverlayTypeToTimelineType = (type: OverlayType): string => {
 /**
  * Get color for overlay type
  */
-const getOverlayColor = (type: OverlayType): string => {
-  switch (type) {
+const getOverlayColor = (overlay: Overlay): string => {
+  if (overlay.type === OverlayType.VIDEO && 'freezeFrame' in overlay && overlay.freezeFrame !== undefined) {
+    return '#0ea5e9'; // sky
+  }
+
+  switch (overlay.type) {
     case OverlayType.TEXT:
       return '#3b82f6'; // blue
     case OverlayType.IMAGE:

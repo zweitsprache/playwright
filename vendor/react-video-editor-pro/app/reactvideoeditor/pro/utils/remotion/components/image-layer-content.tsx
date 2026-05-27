@@ -73,7 +73,11 @@ export const ImageLayerContent: React.FC<ImageLayerContentProps> = ({
 }) => {
   const frame = useCurrentFrame();
   const { baseUrl: contextBaseUrl } = useSafeEditorContext();
-  const isExitPhase = frame >= overlay.durationInFrames - 30;
+  const animationWindow = overlay.durationInFrames > 30
+    ? Math.min(30, Math.floor((overlay.durationInFrames - 1) / 2))
+    : 0;
+  const isEnterPhase = animationWindow > 0 && frame < animationWindow;
+  const isExitPhase = animationWindow > 0 && frame >= overlay.durationInFrames - animationWindow;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -83,7 +87,7 @@ export const ImageLayerContent: React.FC<ImageLayerContentProps> = ({
 
   // Apply enter animation only during entry phase
   const enterAnimation =
-    !isExitPhase && overlay.styles.animation?.enter
+    isEnterPhase && overlay.styles.animation?.enter
       ? animationTemplates[getAnimationKey(overlay.styles.animation.enter)]?.enter(
           frame,
           overlay.durationInFrames

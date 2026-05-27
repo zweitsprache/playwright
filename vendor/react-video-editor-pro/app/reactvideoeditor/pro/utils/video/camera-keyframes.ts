@@ -311,10 +311,6 @@ export const getInheritedCameraStateForClip = (
         );
         continue;
       }
-
-      if (previousImage.freezeFrameCameraState) {
-        inheritedState = previousImage.freezeFrameCameraState;
-      }
     }
   }
 

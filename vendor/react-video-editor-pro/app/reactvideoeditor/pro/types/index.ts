@@ -190,6 +190,7 @@ export type ClipOverlay = BaseOverlay & {
   content: string;
   src: string;
   videoStartTime?: number;
+  freezeFrame?: number;
   speed?: number;
   segments?: OverlayMediaSegment[]; // ordered list of source slices to play
   mediaSrcDuration?: number; // in seconds - total duration of the source media file
@@ -548,7 +549,6 @@ export interface ImageOverlay extends BaseOverlay {
   greenscreen?: GreenscreenConfig; // Greenscreen removal configuration
   styles: ImageStyles;
   cameraKeyframes?: CameraKeyframe[];
-  freezeFrameCameraState?: Pick<CameraKeyframe, 'target' | 'mode' | 'hold'>;
   /**
    * Present when this image was produced by the Slides panel.
    * Holds the editable text fields so the slide can be re-rendered

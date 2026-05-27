@@ -15,7 +15,7 @@
 
 import React from "react";
 import { Camera, Loader2, PaintBucket, Settings, Sparkles } from "lucide-react";
-import { CameraKeyframe, ClipOverlay, ImageOverlay, Overlay, OverlayType } from "../../../types";
+import { ClipOverlay, Overlay } from "../../../types";
 import { VideoStylePanel } from "./video-style-panel";
 import { VideoSettingsPanel } from "./video-settings-panel";
 import { VideoAIPanel } from "./video-ai-panel";
@@ -25,123 +25,12 @@ import { useEditorContext } from "../../../contexts/editor-context";
 import { UnifiedTabs } from "../shared/unified-tabs";
 import { Button } from "../../ui/button";
 import { toast } from "../../../hooks/use-toast";
-import { calculateObjectFitDimensions } from "../../../utils/remotion/helpers/object-fit-calculator";
 
 const DEFAULT_FREEZE_DURATION_FRAMES = 30;
-
-const cloneVideoStylesToImage = (
-  styles: ClipOverlay["styles"],
-): ImageOverlay["styles"] => ({
-  opacity: styles.opacity,
-  zIndex: styles.zIndex,
-  transform: styles.transform,
-  objectFit: styles.objectFit,
-  objectPosition: styles.objectPosition,
-  borderRadius: styles.borderRadius,
-  filter: styles.filter,
-  boxShadow: styles.boxShadow,
-  border: styles.border,
-  padding: styles.padding,
-  paddingBackgroundColor: styles.paddingBackgroundColor,
-  animation: styles.animation,
-  cropEnabled: styles.cropEnabled,
-  cropX: styles.cropX,
-  cropY: styles.cropY,
-  cropWidth: styles.cropWidth,
-  cropHeight: styles.cropHeight,
-  clipPath: styles.clipPath,
-});
-
-
-const waitForVideoEvent = (
-  video: HTMLVideoElement,
-  eventName: "loadedmetadata" | "seeked" | "error",
-) =>
-  new Promise<Event>((resolve, reject) => {
-    const handleEvent = (event: Event) => {
-      cleanup();
-      if (eventName === "error") {
-        reject(video.error ?? new Error("Video event failed"));
-        return;
-      }
-      resolve(event);
-    };
-
-    const cleanup = () => {
-      video.removeEventListener(eventName, handleEvent);
-      if (eventName !== "error") {
-        video.removeEventListener("error", handleError);
-      }
-    };
-
-    const handleError = () => {
-      cleanup();
-      reject(video.error ?? new Error("Video failed to load"));
-    };
-
-    video.addEventListener(eventName, handleEvent, { once: true });
-    if (eventName !== "error") {
-      video.addEventListener("error", handleError, { once: true });
-    }
-  });
-
-const captureVideoFrame = async (
-  src: string,
-  timeInSeconds: number,
-  options?: {
-    viewportWidth?: number;
-    viewportHeight?: number;
-    objectFit?: ClipOverlay["styles"]["objectFit"];
-  },
-) => {
-  const video = document.createElement("video");
-  video.crossOrigin = "anonymous";
-  video.muted = true;
-  video.playsInline = true;
-  video.preload = "auto";
-  video.src = src;
-
-  try {
-    await waitForVideoEvent(video, "loadedmetadata");
-
-    const videoDuration = Number.isFinite(video.duration) ? video.duration : timeInSeconds;
-    const safeTime = Math.max(0, Math.min(timeInSeconds, Math.max(0, videoDuration - 0.001)));
-
-    if (Math.abs(video.currentTime - safeTime) > 0.001) {
-      video.currentTime = safeTime;
-      await waitForVideoEvent(video, "seeked");
-    }
-
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(options?.viewportWidth ?? video.videoWidth));
-    canvas.height = Math.max(1, Math.round(options?.viewportHeight ?? video.videoHeight));
-
-    const context = canvas.getContext("2d");
-    if (!context) {
-      throw new Error("Could not create a canvas context");
-    }
-
-    const { drawX, drawY, drawWidth, drawHeight } = calculateObjectFitDimensions(
-      video.videoWidth,
-      video.videoHeight,
-      canvas.width,
-      canvas.height,
-      options?.objectFit ?? "cover",
-    );
-    context.drawImage(video, drawX, drawY, drawWidth, drawHeight);
-
-    return canvas.toDataURL("image/png");
-  } finally {
-    video.pause();
-    video.removeAttribute("src");
-    video.load();
-  }
-};
 
 const buildFreezeFrameOverlays = (
   overlays: Overlay[],
   overlay: ClipOverlay,
-  imageSrc: string,
   freezeFrame: number,
   fps: number,
   freezeDurationInFrames: number,
@@ -152,9 +41,6 @@ const buildFreezeFrameOverlays = (
   const afterDuration = Math.max(0, overlay.durationInFrames - beforeDuration);
   const speed = overlay.speed ?? 1;
   const sourceOffsetSeconds = (overlay.videoStartTime ?? 0) + (clipOffsetFrames / fps) * speed;
-  const maxId = overlays.reduce((highest, current) => Math.max(highest, current.id), -1);
-  const freezeId = maxId + 1;
-  const continuationId = maxId + 2;
   const sameRowShiftStart = clipStart + overlay.durationInFrames;
 
   const shiftedOverlays = overlays
@@ -170,6 +56,10 @@ const buildFreezeFrameOverlays = (
       };
     });
 
+  const maxId = overlays.reduce((highest, current) => Math.max(highest, current.id), -1);
+  const freezeId = maxId + 1;
+  const continuationId = maxId + 2;
+
   const nextOverlays: Overlay[] = [...shiftedOverlays];
 
   if (beforeDuration > 0) {
@@ -181,11 +71,11 @@ const buildFreezeFrameOverlays = (
     });
   }
 
-  const freezeOverlay: ImageOverlay = {
+  const freezeOverlay: ClipOverlay = {
     id: freezeId,
-    type: OverlayType.IMAGE,
-    src: imageSrc,
-    content: imageSrc,
+    type: overlay.type,
+    src: overlay.src,
+    content: overlay.content,
     from: freezeFrame,
     durationInFrames: freezeDurationInFrames,
     row: overlay.row,
@@ -195,7 +85,19 @@ const buildFreezeFrameOverlays = (
     height: overlay.height,
     isDragging: false,
     rotation: overlay.rotation,
-    styles: cloneVideoStylesToImage(overlay.styles),
+    videoStartTime: sourceOffsetSeconds,
+    freezeFrame: 0,
+    speed: overlay.speed,
+    greenscreen: overlay.greenscreen,
+    styles: {
+      ...overlay.styles,
+      volume: 0,
+      animation: overlay.styles.animation
+        ? {
+            exit: overlay.styles.animation.exit,
+          }
+        : undefined,
+    },
   };
   nextOverlays.push(freezeOverlay);
 
@@ -344,16 +246,9 @@ export const VideoDetails: React.FC<VideoDetailsProps> = ({
   ) => {
     setIsFreezingFrame(true);
     try {
-      const sourceTimeInSeconds = (localOverlay.videoStartTime ?? 0) + (clipOffsetFrames / fps) * (localOverlay.speed ?? 1);
-      const frozenFrameSrc = await captureVideoFrame(localOverlay.src, sourceTimeInSeconds, {
-        viewportWidth: localOverlay.width,
-        viewportHeight: localOverlay.height,
-        objectFit: localOverlay.styles.objectFit,
-      });
       const nextState = buildFreezeFrameOverlays(
         overlays,
         localOverlay,
-        frozenFrameSrc,
         insertFrame,
         fps,
         DEFAULT_FREEZE_DURATION_FRAMES,

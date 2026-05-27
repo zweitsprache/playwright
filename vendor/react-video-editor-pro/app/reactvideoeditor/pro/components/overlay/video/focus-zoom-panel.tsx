@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "../../ui/select";
 import { useEditorContext } from "../../../contexts/editor-context";
-import { getEffectiveClipCameraKeyframes, getInheritedCameraStateForClip, getStoredClipCameraKeyframes, normalizeCameraKeyframes } from "../../../utils/video/camera-keyframes";
+import { getClipCameraKeyframes, getEffectiveClipCameraKeyframes, getInheritedCameraStateForClip, getStoredClipCameraKeyframes, normalizeCameraKeyframes } from "../../../utils/video/camera-keyframes";
 
 interface FocusZoomPanelProps {
   localOverlay: ClipOverlay | ImageOverlay;
@@ -234,7 +234,7 @@ export const FocusZoomPanel: React.FC<FocusZoomPanelProps> = ({
   }, [localOverlay]);
 
   React.useEffect(() => {
-    if (!localOverlay.cameraKeyframes?.length && localOverlay.focusZooms?.length) {
+    if (localOverlay.type === "video" && !localOverlay.cameraKeyframes?.length && localOverlay.focusZooms?.length) {
       const migrated = normalizeCameraKeyframes(
         getClipCameraKeyframes(localOverlay),
         localOverlay.durationInFrames,

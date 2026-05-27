@@ -3,6 +3,8 @@ import {
   delayRender,
   continueRender,
   Html5Video,
+  OffthreadVideo,
+  Freeze,
 } from "remotion";
 import { CameraKeyframe, ClipOverlay } from "../../../types";
 import { animationTemplates, getAnimationKey } from "../../../adaptors/default-animation-adaptors";
@@ -210,7 +212,8 @@ export const VideoLayerContent: React.FC<VideoLayerContentProps> = ({
         videoHeight,
         canvasWidth,
         canvasHeight,
-        objectFit
+        objectFit,
+        overlay.styles.objectPosition,
       );
 
       // Draw the video frame to canvas
@@ -304,12 +307,15 @@ export const VideoLayerContent: React.FC<VideoLayerContentProps> = ({
     [processVideoFrame]
   );
 
-  // Calculate if we're in the exit phase (last 30 frames)
-  const isExitPhase = frame >= overlay.durationInFrames - 30;
+  const animationWindow = overlay.durationInFrames > 30
+    ? Math.min(30, Math.floor((overlay.durationInFrames - 1) / 2))
+    : 0;
+  const isEnterPhase = animationWindow > 0 && frame < animationWindow;
+  const isExitPhase = animationWindow > 0 && frame >= overlay.durationInFrames - animationWindow;
   
   // Apply enter animation only during entry phase
   const enterAnimation =
-    !isExitPhase && overlay.styles.animation?.enter
+    isEnterPhase && overlay.styles.animation?.enter
       ? animationTemplates[getAnimationKey(overlay.styles.animation.enter)]?.enter(
           frame,
           overlay.durationInFrames
@@ -336,6 +342,7 @@ export const VideoLayerContent: React.FC<VideoLayerContentProps> = ({
     width: "100%",
     height: "100%",
     objectFit: overlay.styles.objectFit || "cover",
+    objectPosition: overlay.styles.objectPosition,
     opacity: overlay.styles.opacity,
     ...animationRest,
     transform:
@@ -367,27 +374,47 @@ export const VideoLayerContent: React.FC<VideoLayerContentProps> = ({
   };
 
   // Convert videoStartTime from seconds to frames for OffthreadVideo
-  const startFromFrames = Math.round((overlay.videoStartTime || 0) * FPS);
+  const startFromFrames = Math.max(
+    0,
+    Math.floor((overlay.videoStartTime || 0) * FPS),
+  );
+  const frozenFrame = overlay.freezeFrame;
+
+  // When the Sequence is extended by 1 frame past the natural end (see
+  // layer.tsx) we freeze on the last real frame so we never seek past EOF
+  // and so the previous clip can still be visible at the cut.
+  const tailFreezeFrame =
+    frame >= overlay.durationInFrames ? overlay.durationInFrames - 1 : undefined;
+  const effectiveFreezeFrame = frozenFrame ?? tailFreezeFrame;
+
+  const maybeFreeze = (child: React.ReactElement) => {
+    if (effectiveFreezeFrame === undefined) {
+      return child;
+    }
+
+    return <Freeze frame={effectiveFreezeFrame}>{child}</Freeze>;
+  };
   
   // If greenscreen removal is enabled, use canvas-based rendering
   if (overlay.greenscreen?.enabled) {
     return (
       <div style={containerStyle}>
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-          {/* Hidden video that feeds frames to canvas */}
-          <Html5Video
-            src={videoSrc}
-            trimBefore={startFromFrames}
-            style={{ 
-              ...videoStyle,
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              opacity: 0,
-            }}
-            volume={overlay.styles.volume ?? 1}
-            playbackRate={overlay.speed ?? 1}
-          />
+          {maybeFreeze(
+            <Html5Video
+              src={videoSrc}
+              trimBefore={startFromFrames}
+              style={{ 
+                ...videoStyle,
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                opacity: 0,
+              }}
+              volume={overlay.styles.volume ?? 1}
+              playbackRate={overlay.speed ?? 1}
+            />,
+          )}
           {/* Canvas that displays processed video with greenscreen removed */}
           <canvas
             ref={canvasRef}
@@ -408,13 +435,15 @@ export const VideoLayerContent: React.FC<VideoLayerContentProps> = ({
   // Normal rendering without greenscreen removal
   return (
     <div style={containerStyle}>
-      <Html5Video
-        src={videoSrc}
-        trimBefore={startFromFrames}
-        style={videoStyle}
-        volume={overlay.styles.volume ?? 1}
-        playbackRate={overlay.speed ?? 1}
-      />
+      {maybeFreeze(
+        <OffthreadVideo
+          src={videoSrc}
+          trimBefore={startFromFrames}
+          style={videoStyle}
+          volume={overlay.styles.volume ?? 1}
+          playbackRate={overlay.speed ?? 1}
+        />,
+      )}
     </div>
   );
 };

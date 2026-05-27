@@ -47,10 +47,10 @@ export default function SimplePage() {
     ];
   
 
-   // Default renderer uses NextJS API routes
-   const ssrRenderer = React.useMemo(() => 
+   // Default renderer uses NextJS API routes backed by Remotion Lambda
+   const lambdaRenderer = React.useMemo(() => 
     new RenderJobRenderer('/api/render-jobs', {
-      type: 'ssr',
+      type: 'lambda',
       entryPoint: '/api/render-jobs'
     }), []
   );
@@ -79,7 +79,7 @@ export default function SimplePage() {
         fps={30}
         videoWidth={1920}
         videoHeight={1080}
-        renderer={ssrRenderer}
+        renderer={lambdaRenderer}
         disabledPanels={[]}
         availableThemes={availableThemes}
         defaultTheme="dark"

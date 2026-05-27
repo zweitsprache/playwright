@@ -5,6 +5,7 @@ import {
 } from "@remotion/lambda";
 import dotenv from "dotenv";
 import path from "path";
+import { fileURLToPath } from "url";
 import { RAM, REGION, SITE_NAME, TIMEOUT, DISK } from "./config.mjs";
 
 /**
@@ -16,6 +17,12 @@ import { RAM, REGION, SITE_NAME, TIMEOUT, DISK } from "./config.mjs";
  */
 
 console.log("Selected region:", REGION);
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDir = path.dirname(currentFilePath);
+const repoRoot = path.resolve(currentDir, "..", "..");
+
+dotenv.config({ path: path.join(repoRoot, ".env.local") });
+dotenv.config({ path: path.join(repoRoot, ".env") });
 dotenv.config();
 
 if (!process.env.AWS_ACCESS_KEY_ID && !process.env.REMOTION_AWS_ACCESS_KEY_ID) {
@@ -57,6 +64,8 @@ console.log(
   functionAlreadyExisted ? "(already existed)" : "(created)"
 );
 
+process.env.REMOTION_AWS_LAMBDA_FUNCTION_NAME = functionName;
+
 process.stdout.write("Ensuring bucket... ");
 const { bucketName, alreadyExisted: bucketAlreadyExisted } =
   await getOrCreateBucket({
@@ -70,7 +79,15 @@ console.log(
 process.stdout.write("Deploying site... ");
 const { siteName } = await deploySite({
   bucketName,
-  entryPoint: path.join(process.cwd(), "remotion", "index.ts"),
+  entryPoint: path.join(
+    process.cwd(),
+    "app",
+    "reactvideoeditor",
+    "pro",
+    "utils",
+    "remotion",
+    "index.ts"
+  ),
   siteName: SITE_NAME,
   region: REGION,
 });
@@ -79,6 +96,10 @@ console.log(siteName);
 
 console.log();
 console.log("You now have everything you need to render videos!");
+console.log("Add these values to your root .env.local before starting Next.js:");
+console.log(`REMOTION_AWS_REGION=${REGION}`);
+console.log(`REMOTION_AWS_SITE_NAME=${siteName}`);
+console.log(`REMOTION_AWS_LAMBDA_FUNCTION_NAME=${functionName}`);
 console.log("Re-run this command when:");
 console.log("  1) you changed the video template");
 console.log("  2) you changed config.mjs");

@@ -21,10 +21,18 @@
         "name": "next"
       }
     ],
-    "baseUrl": ".",
     "paths": {
       "@/*": [
-        "./src/*"
+        "./*"
+      ],
+      "app/*": [
+        "./app/*"
+      ],
+      "components/*": [
+        "./components/*"
+      ],
+      "lib/*": [
+        "./lib/*"
       ]
     },
     "target": "ES2017"
@@ -36,6 +44,11 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "tests",
+    "tests/**",
+    ".next",
+    "dist",
+    "build"
   ]
 }

@@ -83,12 +83,19 @@ export const Layer: React.FC<{
    * Note: premountFor requires removing layout="none" as the Sequence needs
    * a container to apply opacity: 0 and pointer-events: none during premount.
    * @see https://www.remotion.dev/docs/player/premounting
+   *
+   * We render image/video overlays for one extra frame past their natural end so
+   * the previous clip's last frame is still drawn at the cut frame. On Lambda,
+   * OffthreadVideo can return a blank/transparent first frame after a seek; the
+   * frozen previous frame underneath fills that hole and eliminates the flicker.
    */
+  const cutFlickerPad =
+    overlay.type === "video" || overlay.type === "image" ? 1 : 0;
   return (
     <Sequence
       key={overlay.id}
       from={overlay.from}
-      durationInFrames={overlay.durationInFrames}
+      durationInFrames={overlay.durationInFrames + cutFlickerPad}
       premountFor={30}
     >
       <div style={style}>

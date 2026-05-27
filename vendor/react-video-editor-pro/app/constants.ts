@@ -29,10 +29,12 @@ export const SHOW_MOBILE_WARNING = true; // Show warning modal on mobile devices
 export const DISABLE_VIDEO_KEYFRAMES = false;
 
 // AWS deployment configuration
-export const SITE_NAME = "example-site";
+const lambdaRegion = process.env.REMOTION_AWS_REGION ?? process.env.AWS_REGION ?? "us-east-1";
+
+export const SITE_NAME = process.env.REMOTION_AWS_SITE_NAME ?? "sams-site";
 export const LAMBDA_FUNCTION_NAME =
-  "remotion-render-4-0-356-mem2048mb-disk2048mb-120sec";
-export const REGION = "us-east-2";
+  process.env.REMOTION_AWS_LAMBDA_FUNCTION_NAME ?? "remotion-render-4-0-424-mem3008mb-disk10240mb-240sec";
+export const REGION = lambdaRegion;
 
 // Zoom control configuration
 export const ZOOM_CONSTRAINTS = {

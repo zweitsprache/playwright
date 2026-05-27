@@ -2,6 +2,12 @@ import { Prisma } from "@prisma/client";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getAuthenticatedAdminUserId, hasAdminCredentials } from "@/lib/auth";
+import {
+  createProject as createLocalProject,
+  findProject as findLocalProject,
+  listProjects as listLocalProjects,
+  shouldUseLocalEditorStore,
+} from "@/lib/local-editor-store";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -55,6 +61,40 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
+
+  if (shouldUseLocalEditorStore()) {
+    if (id) {
+      const project = await findLocalProject(id, scope.canAccessAllProjects ? undefined : scope.writeUserId);
+      if (!project) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+
+      return NextResponse.json({
+        id: project.id,
+        name: project.name,
+        aspect_ratio: project.aspectRatio,
+        aspectRatio: project.aspectRatio,
+        background_color: project.backgroundColor,
+        backgroundColor: project.backgroundColor,
+        overlays: (project.state.overlays as unknown[] | undefined) ?? [],
+        state: project.state,
+        updatedAt: project.updatedAt,
+        createdAt: project.createdAt,
+      });
+    }
+
+    const projects = await listLocalProjects(scope.canAccessAllProjects ? undefined : scope.writeUserId);
+    return NextResponse.json({
+      projects: projects.map((project) => ({
+        id: project.id,
+        name: project.name,
+        aspectRatio: project.aspectRatio,
+        backgroundColor: project.backgroundColor,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+      })),
+    });
+  }
 
   if (id) {
     const project = await prisma.videoProject.findFirst({
@@ -115,6 +155,25 @@ export async function POST(request: NextRequest) {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (shouldUseLocalEditorStore()) {
+    const project = await createLocalProject({
+      userId: scope.writeUserId,
+      name: (body.name ?? "Untitled project").slice(0, 200),
+      aspectRatio: body.aspectRatio ?? null,
+      backgroundColor: body.backgroundColor ?? null,
+      state: (body.state ?? {}) as Record<string, unknown>,
+    });
+
+    return NextResponse.json({
+      id: project.id,
+      name: project.name,
+      aspectRatio: project.aspectRatio,
+      backgroundColor: project.backgroundColor,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    }, { status: 201 });
   }
 
   const project = await prisma.videoProject.create({

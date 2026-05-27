@@ -3,6 +3,12 @@ import { AwsRegion, getRenderProgress } from "@remotion/lambda/client";
 import { prisma } from "../../../../lib/prisma";
 import { getAuthenticatedAdminUserId, hasAdminCredentials } from "../../../../../../src/lib/auth";
 import {
+  findRenderJob as findLocalRenderJob,
+  type LocalRenderJobRecord,
+  shouldUseLocalEditorStore,
+  updateRenderJob as updateLocalRenderJob,
+} from "../../../../../../src/lib/local-editor-store";
+import {
   LAMBDA_FUNCTION_NAME,
   REGION,
 } from "../../../constants";
@@ -80,6 +86,8 @@ type RenderJobRecord = {
   updatedAt: Date;
 };
 
+type AnyRenderJobRecord = RenderJobRecord | LocalRenderJobRecord;
+
 type RenderJobDelegate = {
   findFirst: (args: {
     where: { id: string; userId?: string };
@@ -100,14 +108,26 @@ async function getOwnedJob(
   id: string,
   scope: { canAccessAllJobs: boolean; writeUserId: string },
 ) {
+  if (shouldUseLocalEditorStore()) {
+    return findLocalRenderJob(id, scope.canAccessAllJobs ? undefined : scope.writeUserId);
+  }
+
   return getRenderJobDelegate().findFirst({
     where: scope.canAccessAllJobs ? { id } : { id, userId: scope.writeUserId },
     select: selectRenderJob,
   });
 }
 
-async function syncLambdaJob(job: RenderJobRecord) {
+async function syncLambdaJob(job: AnyRenderJobRecord) {
   if (!job.renderId || !job.bucketName) {
+    if (shouldUseLocalEditorStore()) {
+      return updateLocalRenderJob(job.id, {
+        status: "error",
+        progress: job.progress,
+        errorMessage: "Lambda render job is missing render identifiers",
+      });
+    }
+
     return getRenderJobDelegate().update({
       where: { id: job.id },
       data: {
@@ -119,14 +139,53 @@ async function syncLambdaJob(job: RenderJobRecord) {
     });
   }
 
-  const renderProgress = await getRenderProgress({
-    bucketName: job.bucketName,
-    functionName: LAMBDA_FUNCTION_NAME,
-    region: REGION as AwsRegion,
-    renderId: job.renderId,
-  });
+  let renderProgress;
+  try {
+    renderProgress = await getRenderProgress({
+      bucketName: job.bucketName,
+      functionName: LAMBDA_FUNCTION_NAME,
+      region: REGION as AwsRegion,
+      renderId: job.renderId,
+    });
+  } catch (error) {
+    const isThrottled =
+      typeof error === "object" &&
+      error !== null &&
+      "$metadata" in error &&
+      (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 429;
+
+    if (isThrottled) {
+      if (shouldUseLocalEditorStore()) {
+        return updateLocalRenderJob(job.id, {
+          status: "rendering",
+          progress: Math.max(0.03, job.progress),
+          errorMessage: null,
+        });
+      }
+
+      return getRenderJobDelegate().update({
+        where: { id: job.id },
+        data: {
+          status: "rendering",
+          progress: Math.max(0.03, job.progress),
+          errorMessage: null,
+        },
+        select: selectRenderJob,
+      });
+    }
+
+    throw error;
+  }
 
   if (renderProgress.fatalErrorEncountered) {
+    if (shouldUseLocalEditorStore()) {
+      return updateLocalRenderJob(job.id, {
+        status: "error",
+        progress: job.progress,
+        errorMessage: renderProgress.errors[0]?.message ?? "Lambda render failed",
+      });
+    }
+
     return getRenderJobDelegate().update({
       where: { id: job.id },
       data: {
@@ -139,6 +198,16 @@ async function syncLambdaJob(job: RenderJobRecord) {
   }
 
   if (renderProgress.done) {
+    if (shouldUseLocalEditorStore()) {
+      return updateLocalRenderJob(job.id, {
+        status: "done",
+        progress: 1,
+        outputUrl: renderProgress.outputFile ?? null,
+        outputSize: renderProgress.outputSizeInBytes ?? null,
+        errorMessage: null,
+      });
+    }
+
     return getRenderJobDelegate().update({
       where: { id: job.id },
       data: {
@@ -149,6 +218,14 @@ async function syncLambdaJob(job: RenderJobRecord) {
         errorMessage: null,
       },
       select: selectRenderJob,
+    });
+  }
+
+  if (shouldUseLocalEditorStore()) {
+    return updateLocalRenderJob(job.id, {
+      status: "rendering",
+      progress: Math.max(0.03, renderProgress.overallProgress ?? job.progress),
+      errorMessage: null,
     });
   }
 
@@ -163,7 +240,7 @@ async function syncLambdaJob(job: RenderJobRecord) {
   });
 }
 
-async function syncSsrJob(job: RenderJobRecord) {
+async function syncSsrJob(job: AnyRenderJobRecord) {
   return job;
 }
 

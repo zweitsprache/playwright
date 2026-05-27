@@ -2,6 +2,11 @@ import { Prisma } from "@prisma/client";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getAuthenticatedAdminUserId, hasAdminCredentials } from "@/lib/auth";
+import {
+  deleteProject as deleteLocalProject,
+  shouldUseLocalEditorStore,
+  updateProject as updateLocalProject,
+} from "@/lib/local-editor-store";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -71,6 +76,32 @@ export async function PUT(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  if (shouldUseLocalEditorStore()) {
+    const project = await updateLocalProject(
+      id,
+      scope.canAccessAllProjects ? undefined : scope.writeUserId,
+      {
+        ...(body.name !== undefined ? { name: body.name.slice(0, 200) } : {}),
+        ...(body.state !== undefined ? { state: body.state as Record<string, unknown> } : {}),
+        ...(body.aspectRatio !== undefined ? { aspectRatio: body.aspectRatio } : {}),
+        ...(body.backgroundColor !== undefined ? { backgroundColor: body.backgroundColor } : {}),
+        ...(scope.shouldRewriteOwner ? { userId: scope.writeUserId } : {}),
+      },
+    );
+
+    if (!project) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      id: project.id,
+      name: project.name,
+      aspectRatio: project.aspectRatio,
+      backgroundColor: project.backgroundColor,
+      updatedAt: project.updatedAt,
+    });
+  }
+
   const result = await prisma.videoProject.updateMany({
     where: scope.canAccessAllProjects ? { id } : { id, userId: scope.writeUserId },
     data: {
@@ -124,6 +155,15 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  if (shouldUseLocalEditorStore()) {
+    const deleted = await deleteLocalProject(id, scope.canAccessAllProjects ? undefined : scope.writeUserId);
+    if (!deleted) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true });
+  }
+
   const result = await prisma.videoProject.deleteMany({
     where: scope.canAccessAllProjects ? { id } : { id, userId: scope.writeUserId },
   });

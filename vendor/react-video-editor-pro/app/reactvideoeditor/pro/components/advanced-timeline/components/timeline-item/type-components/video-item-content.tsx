@@ -77,6 +77,7 @@ export const VideoItemContent: React.FC<VideoItemContentProps> = ({
   const intervalSec = data?.intervalSec || 5;
   const mediaStart = data?.mediaStart || 0;
   const isShowingThumbnails = !!spriteUrl && !!rectForTime && !isLoadingThumbnails;
+  const isFreezeFrame = data && typeof data === 'object' && 'freezeFrame' in data && data.freezeFrame !== undefined;
 
   // Delayed spinner logic
   const showLoading = useDelayVisible(isLoadingThumbnails && !!videoSrc, 1000);
@@ -208,10 +209,13 @@ export const VideoItemContent: React.FC<VideoItemContentProps> = ({
             );
           })}
         </div>
+        {isFreezeFrame ? (
+          <div className="pointer-events-none absolute inset-0 bg-sky-400/35" />
+        ) : null}
         {hoverOverlay}
       </div>
     );
-  }, [spriteUrl, rectForTime, optimalThumbnailWidth, itemWidth, end, start, mediaStart, fps, segments, itemHeight, spriteNaturalSize, hoverOverlay]);
+  }, [spriteUrl, rectForTime, optimalThumbnailWidth, itemWidth, end, start, mediaStart, fps, segments, itemHeight, spriteNaturalSize, hoverOverlay, isFreezeFrame]);
 
   // Show thumbnails if we have them and they're ready and loading has been going for less than 1 second
   if (spriteUrl && rectForTime && (isShowingThumbnails || (isLoadingThumbnails && !showLoading))) {
@@ -248,7 +252,7 @@ export const VideoItemContent: React.FC<VideoItemContentProps> = ({
   return (
     <TimelineItemLabel
       icon={Video}
-      label={label}
+        label={isFreezeFrame ? 'STILL' : label}
       defaultLabel="VIDEO"
       isHovering={isHovering}
     />
