@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Player, PlayerRef } from "@remotion/player";
+import { prefetch } from "remotion";
 import { Main } from "../../utils/remotion/main";
 import { useEditorContext } from "../../contexts/editor-context";
+import { OverlayType } from "../../types";
 
 /**
  * Props for the VideoPlayer component
@@ -120,6 +122,64 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       window.removeEventListener("orientationchange", handleOrientationChange);
     };
   }, [aspectRatio, updatePlayerDimensions, isPlayerOnly]);
+
+  /**
+   * Prefetch every unique video/sound src so the browser warms its HTTP cache
+   * (and, for video, can blob-decode without a stall) before the playhead reaches
+   * a cut. Without this, OffthreadVideo only starts fetching a clip when its
+   * Sequence mounts, producing a brief freeze at every cut in the preview.
+   *
+   * We reconcile against a ref-held map so unchanged srcs keep their existing
+   * prefetch handle — re-running the effect on every overlay mutation (drag,
+   * select, etc.) would otherwise call handle.free() and abort in-flight
+   * downloads, showing up as "(canceled)" entries in the Network tab.
+   *
+   * Render is unaffected — prefetch is a Player-only API.
+   * @see https://www.remotion.dev/docs/player/prefetch
+   */
+  const prefetchHandlesRef = useRef<Map<string, ReturnType<typeof prefetch>>>(new Map());
+  useEffect(() => {
+    const nextSrcs = new Set<string>();
+    for (const overlay of overlays) {
+      if (
+        (overlay.type === OverlayType.VIDEO || overlay.type === OverlayType.SOUND) &&
+        typeof overlay.src === "string" &&
+        overlay.src.length > 0 &&
+        // Skip blob: / data: URLs — the bytes are already in memory, prefetch is
+        // a no-op at best and can throw on some browsers.
+        !overlay.src.startsWith("blob:") &&
+        !overlay.src.startsWith("data:")
+      ) {
+        nextSrcs.add(overlay.src);
+      }
+    }
+
+    const handles = prefetchHandlesRef.current;
+    // Start prefetches for newly added srcs.
+    for (const src of nextSrcs) {
+      if (!handles.has(src)) {
+        handles.set(src, prefetch(src));
+      }
+    }
+    // Free prefetches for srcs no longer used.
+    for (const [src, handle] of handles) {
+      if (!nextSrcs.has(src)) {
+        handle.free();
+        handles.delete(src);
+      }
+    }
+  }, [overlays]);
+
+  // Free all prefetch handles on unmount.
+  useEffect(() => {
+    const handles = prefetchHandlesRef.current;
+    return () => {
+      for (const handle of handles.values()) {
+        handle.free();
+      }
+      handles.clear();
+    };
+  }, []);
 
   // Use actual project dimensions for the composition
   const { width: compositionWidth, height: compositionHeight } = getAspectRatioDimensions();
